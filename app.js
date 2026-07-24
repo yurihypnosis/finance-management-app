@@ -453,7 +453,7 @@ function computeVals() {
 
   const savingsGoal = s.savingsGoal;
   const savingsGoalGap = savingsGoal - surplus;
-  const savingsGoalPct = Math.min(100, Math.max(0, surplus / savingsGoal * 100)) + '%';
+  const savingsGoalPct = Math.min(100, Math.max(0, surplus / Math.max(1, savingsGoal) * 100)) + '%';
   const savingsGoalMsg = savingsGoalGap > 0 ? ('目標まであと ' + fmt(savingsGoalGap) + '円') : ('目標を ' + fmt(-savingsGoalGap) + '円 上回っています');
   const savingsGoalColor = savingsGoalGap > 0 ? 'var(--amber)' : 'var(--green)';
 
@@ -561,6 +561,15 @@ function computeVals() {
     const avg = avgCategoryMonthly(b.id);
     return a + (avg !== null ? avg : b.cap);
   }, 0);
+
+  /* ---- home screen: this month's take-home split into fixed / variable / remaining ---- */
+  const homeFixedMonthly = fixedCoreMonthly + subsMonthly;
+  const homeVariableMonthly = Math.max(0, realSpend - homeFixedMonthly);
+  const homeBase = Math.max(1, t.net);
+  const homeFixedPct = Math.min(100, homeFixedMonthly / homeBase * 100);
+  const homeVariablePct = Math.min(100 - homeFixedPct, homeVariableMonthly / homeBase * 100);
+  const homeRemainPct = Math.max(0, 100 - homeFixedPct - homeVariablePct);
+  function manYen(n) { return (n / 10000).toFixed(1) + '万'; }
 
   function categoryDelta(catId, used) {
     const avg = avgCategoryMonthly(catId);
@@ -793,6 +802,8 @@ function computeVals() {
     forecastReliable: forecastReliable, forecastSampleMonths: forecastSampleMonths,
     forecastLowFmt: fmt(forecastLow), forecastHighFmt: fmt(forecastHigh), annualStdFmt: fmt(annualStd),
     forecastCategoryRows: forecastCategoryRows,
+    homeFixedPct: homeFixedPct + '%', homeVariablePct: homeVariablePct + '%', homeRemainPct: homeRemainPct + '%',
+    homeFixedLabel: '固定費 ' + manYen(homeFixedMonthly), homeVariableLabel: '流動費 ' + manYen(homeVariableMonthly),
     coachOn: COACH_ON,
     coachMsg: lowSubTotal > 0
       ? ('未活用のサービスが' + (noneSubs.length + lowSubs.length) + '件（月' + fmt(lowSubTotal) + '円）。解約により投資余力を改善できます')
@@ -851,7 +862,7 @@ function computeVals() {
     addCategory: function () {
       const cap = +s.formCategoryCap || 0;
       if (!s.formCategoryName.trim() || cap <= 0) return;
-      const nc = { id: 'cat-' + s.budgetCategories.length + '-' + Math.random().toString(36).slice(2, 7), name: s.formCategoryName.trim(), cap: cap };
+      const nc = { id: 'cat-' + s.budgetCategories.length + '-' + Math.random().toString(36).slice(2, 7), name: s.formCategoryName.trim(), cap: cap, group: 'variable' };
       setState(function (st) { return { budgetCategories: st.budgetCategories.concat([nc]), addCategoryOpen: false, formCategoryName: '' }; });
     },
     viewMonth: vm, viewMonthLabel: monthLabel(vm), goPrevMonth: goPrevMonth, goNextMonth: goNextMonth, goCurrentMonth: goCurrentMonth,
@@ -866,7 +877,7 @@ function computeVals() {
       const gap = goal - surplus;
       return {
         goalFmt: fmt(goal),
-        pct: Math.min(100, Math.max(0, surplus / goal * 100)) + '%',
+        pct: Math.min(100, Math.max(0, surplus / Math.max(1, goal) * 100)) + '%',
         msg: gap > 0 ? ('目標まであと ' + fmt(gap) + '円') : ('目標を ' + fmt(-gap) + '円 上回っています'),
         color: gap > 0 ? 'var(--amber)' : 'var(--green)',
       };
@@ -1053,12 +1064,12 @@ function monthSwitcher(v) {
 
 function screenHome(v) {
   const splitBar = h('div', { class: 'progress-track split', style: { marginTop: '2px' } }, [
-    h('div', { style: { width: '54%', background: 'var(--primary)' } }),
-    h('div', { style: { width: '28%', background: 'var(--amber)' } }),
+    h('div', { style: { width: v.homeFixedPct, background: 'var(--primary)' } }),
+    h('div', { style: { width: v.homeVariablePct, background: 'var(--amber)' } }),
     h('div', { style: { flex: '1', background: 'var(--green)' } }),
   ]);
   const legend = h('div', { style: { display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--muted2)', marginTop: '10px', flexWrap: 'wrap' } }, [
-    h('div', {}, '固定費 24.4万'), h('div', {}, '流動費 12.6万'), h('div', {}, '残り'),
+    h('div', {}, v.homeFixedLabel), h('div', {}, v.homeVariableLabel), h('div', {}, '残り'),
   ]);
   const coach = v.coachOn ? h('div', { style: { fontSize: '12px', color: 'var(--muted)', marginTop: '16px', lineHeight: '1.7' } }, v.coachMsg) : null;
 
