@@ -70,17 +70,9 @@ function defaultState() {
       { id: 'medical', name: '医療', cap: 5000, group: 'variable' },
       { id: 'other', name: 'その他', cap: 10000, group: 'variable' },
     ],
-    budgetActuals: (function () {
-      const o = {};
-      o[cm] = { sub: 9800, shopping: 13200, etc: 8600, suica: 9200, movie: 6400, food: 38200 };
-      return o;
-    })(),
+    budgetActuals: {},
     dbLoaded: false,
-    transfersByMonth: (function () {
-      const o = {};
-      o[cm] = [{ id: 'transfer-nisa', name: '証券口座（NISA）への入金', note: '資産が移動しただけで支出ではない', amount: 30000, taxAdvantaged: true }];
-      return o;
-    })(),
+    transfersByMonth: {},
     habitTab: 'habit', addOpen: false, formName: '', formTimes: 3, formAmount: 500,
     habits: [
       { id: 'cafe', name: 'カフェ通い', freq: '週3回 × 600円', month: 7200 },
@@ -103,11 +95,7 @@ function defaultState() {
     ],
     addTransferOpen: false, formTransferName: '', formTransferAmount: 5000, formTransferNote: '', formTransferIsNisa: false,
     addCashOpen: false, formCashName: '', formCashAmount: 1000, formCashNote: '', formCashDate: isoDate(new Date()),
-    cashExpensesByMonth: (function () {
-      const o = {};
-      o[cm] = [{ id: 'cash-sample', name: '現金での買い物', note: 'カード明細に載らない現金払い', amount: 2000, date: isoDate(new Date()) }];
-      return o;
-    })(),
+    cashExpensesByMonth: {},
     addRecurringCashOpen: false, formRecurringCashName: '', formRecurringCashAmount: 1000, formRecurringCashNote: '',
     cashRecurring: [],
   };
@@ -154,7 +142,17 @@ function loadCardTransactions() {
       });
       setState(function (st) {
         const ba = Object.assign({}, st.budgetActuals);
-        Object.keys(byMonth).forEach(function (mk) { ba[mk] = byMonth[mk]; });
+        Object.keys(byMonth).forEach(function (mk) {
+          // Fill in categories with no recorded value yet; never clobber an
+          // existing value (e.g. one the user already typed into the budget
+          // screen), or a manual edit would be silently reverted on every reload.
+          const existing = ba[mk] || {};
+          const merged = Object.assign({}, existing);
+          Object.keys(byMonth[mk]).forEach(function (catId) {
+            if (merged[catId] === undefined) merged[catId] = byMonth[mk][catId];
+          });
+          ba[mk] = merged;
+        });
         return { budgetActuals: ba, dbLoaded: true };
       });
     })
@@ -233,18 +231,21 @@ function renderAuth() {
 /* ---------- app bootstrap ---------- */
 function enterApp(sess) {
   session = sess;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(userStorageKey())); } catch (e) { /* no local cache */ }
   sb.from('user_state').select('data').eq('user_id', sess.user.id).maybeSingle()
     .then(function (res) {
       if (res.error) throw res.error;
-      let cached = null;
-      try { cached = JSON.parse(localStorage.getItem(userStorageKey())); } catch (e) { /* no local cache */ }
       state = Object.assign(defaultState(), cached, res.data && res.data.data ? res.data.data : {});
       render();
       loadCardTransactions();
     })
     .catch(function (e) {
+      // A failed read must never fall back to blank defaults here: the next
+      // mutation would sync that empty state to Supabase and overwrite the
+      // user's real saved data. Fall back to the last-known local cache instead.
       console.error('ユーザーデータの読み込みに失敗しました', e);
-      state = defaultState();
+      state = Object.assign(defaultState(), cached);
       render();
       loadCardTransactions();
     });
@@ -385,9 +386,20 @@ function computeVals() {
       pct: Math.min(100, r * 100) + '%', pctLabel: Math.round(r * 100) + '%',
       color: r > 1 ? 'var(--red)' : r > 0.85 ? 'var(--amber)' : 'var(--green)',
       gap: used - b.cap,
-      onUsedChange: function (e) { setBudgetActual(b.id, +e.target.value || 0); },
+      onUsedChange: function (e) { setBudgetActual(b.id, Math.max(0, +e.target.value || 0)); },
       removeCategory: function () {
-        setState(function (st) { return { budgetCategories: st.budgetCategories.filter(function (x) { return x.id !== b.id; }) }; });
+        setState(function (st) {
+          const ba = {};
+          Object.keys(st.budgetActuals).forEach(function (mk) {
+            const monthVals = Object.assign({}, st.budgetActuals[mk]);
+            delete monthVals[b.id];
+            ba[mk] = monthVals;
+          });
+          return {
+            budgetCategories: st.budgetCategories.filter(function (x) { return x.id !== b.id; }),
+            budgetActuals: ba,
+          };
+        });
       },
     };
   });
