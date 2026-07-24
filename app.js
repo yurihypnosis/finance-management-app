@@ -166,6 +166,11 @@ let authState = { mode: 'login', email: '', password: '', error: '', loading: fa
 function setAuthState(patch) { authState = Object.assign({}, authState, patch); renderAuth(); }
 
 function renderAuth() {
+  const active = document.activeElement;
+  const field = active && contentEl.contains(active) ? active.getAttribute('data-field') : null;
+  const selStart = field && 'selectionStart' in active ? active.selectionStart : null;
+  const selEnd = field && 'selectionEnd' in active ? active.selectionEnd : null;
+
   const a = authState;
   const isSignup = a.mode === 'signup';
   function submit() {
@@ -187,12 +192,16 @@ function renderAuth() {
     h('div', { style: { display: 'flex', flexDirection: 'column', gap: '16px' } }, [
       h('div', {}, [
         h('span', { class: 'field-label' }, 'メールアドレス'),
-        h('input', { class: 'field-input', type: 'email', value: a.email, autocomplete: 'email', oninput: function (e) { setAuthState({ email: e.target.value }); } }),
+        h('input', {
+          class: 'field-input', type: 'email', value: a.email, autocomplete: 'email', 'data-field': 'authEmail',
+          oninput: function (e) { setAuthState({ email: e.target.value }); },
+        }),
       ]),
       h('div', {}, [
         h('span', { class: 'field-label' }, 'パスワード（6文字以上）'),
         h('input', {
           class: 'field-input', type: 'password', value: a.password, autocomplete: isSignup ? 'new-password' : 'current-password',
+          'data-field': 'authPassword',
           oninput: function (e) { setAuthState({ password: e.target.value }); },
           onkeydown: function (e) { if (e.key === 'Enter') submit(); },
         }),
@@ -209,6 +218,16 @@ function renderAuth() {
   contentEl.appendChild(view);
   topbarEl.innerHTML = '';
   menuEl.innerHTML = '';
+
+  if (field) {
+    const next = contentEl.querySelector('[data-field="' + field + '"]');
+    if (next) {
+      next.focus();
+      if (selStart !== null && selEnd !== null && 'setSelectionRange' in next) {
+        try { next.setSelectionRange(selStart, selEnd); } catch (e) { /* not supported for this input type */ }
+      }
+    }
+  }
 }
 
 /* ---------- app bootstrap ---------- */
