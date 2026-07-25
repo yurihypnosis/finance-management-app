@@ -47,7 +47,7 @@ function dateShortLabel(iso) {
 function defaultState() {
   const cm = monthKey(new Date());
   return {
-    screen: 'home', menuOpen: false, expTab: 'fixed', invTarget: 80000, cuts: {}, habitsOff: {}, gross: 400000,
+    screen: 'home', menuOpen: false, expTab: 'fixed', budgetTab: 'budget', invTarget: 80000, cuts: {}, habitsOff: {}, gross: 400000,
     savingsGoal: 100000, spendGoal: 250000,
     bonuses: [
       { id: 'b1', label: '夏のボーナス', month: 6, amount: 300000 },
@@ -112,15 +112,48 @@ let state = null;   // app state; only populated once a user is authenticated an
 
 function userStorageKey() { return STORAGE_KEY + ':' + session.user.id; }
 
+/* ---------- save-status indicator: gives visible confirmation that an edit
+   was actually persisted, since every input auto-saves with no "保存" button ---------- */
+let syncStatus = 'idle'; // idle | pending | saved | error
+let syncStatusResetTimer = null;
+function setSyncStatus(v) {
+  syncStatus = v;
+  updateSyncStatusDOM();
+  if (syncStatusResetTimer) { clearTimeout(syncStatusResetTimer); syncStatusResetTimer = null; }
+  if (v === 'saved') syncStatusResetTimer = setTimeout(function () { setSyncStatus('idle'); }, 2000);
+}
+function syncStatusView() {
+  const map = {
+    idle: { text: '', color: 'var(--muted2)' },
+    pending: { text: '保存中…', color: 'var(--muted)' },
+    saved: { text: '保存済み', color: 'var(--green)' },
+    error: { text: '保存に失敗しました', color: 'var(--red)' },
+  };
+  return map[syncStatus] || map.idle;
+}
+// Updates the already-rendered indicator directly, for status changes (e.g. a
+// debounced sync resolving) that happen between full render() calls.
+function updateSyncStatusDOM() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const m = syncStatusView();
+  el.textContent = m.text;
+  el.style.color = m.color;
+}
+
 let pendingSyncTimer = null;
 function flushSync() {
   if (pendingSyncTimer) { clearTimeout(pendingSyncTimer); pendingSyncTimer = null; }
   if (!session) return;
   sb.from('user_state').upsert({ user_id: session.user.id, data: state, updated_at: new Date().toISOString() })
-    .then(function (res) { if (res.error) console.error('状態の保存に失敗しました', res.error); });
+    .then(function (res) {
+      if (res.error) { console.error('状態の保存に失敗しました', res.error); setSyncStatus('error'); return; }
+      setSyncStatus('saved');
+    });
 }
 function scheduleSync() {
   if (!session) return;
+  setSyncStatus('pending');
   if (pendingSyncTimer) clearTimeout(pendingSyncTimer);
   pendingSyncTimer = setTimeout(flushSync, 800);
 }
@@ -462,6 +495,16 @@ function computeVals() {
       return { budgetActuals: ba };
     });
   }
+  function setBudgetCap(catId, val) {
+    setState(function (st) {
+      return { budgetCategories: st.budgetCategories.map(function (c) { return c.id === catId ? Object.assign({}, c, { cap: val }) : c; }) };
+    });
+  }
+  function setBudgetName(catId, val) {
+    setState(function (st) {
+      return { budgetCategories: st.budgetCategories.map(function (c) { return c.id === catId ? Object.assign({}, c, { name: val }) : c; }) };
+    });
+  }
   const budgetRows = s.budgetCategories.map(function (b) {
     const used = monthActuals[b.id] || 0;
     const r = used / b.cap;
@@ -471,6 +514,8 @@ function computeVals() {
       color: r > 1 ? 'var(--red)' : r > 0.85 ? 'var(--amber)' : 'var(--green)',
       gap: used - b.cap,
       onUsedChange: function (e) { setBudgetActual(b.id, Math.max(0, +e.target.value || 0)); },
+      onCapChange: function (e) { setBudgetCap(b.id, Math.max(1, +e.target.value || 0)); },
+      onNameChange: function (e) { setBudgetName(b.id, e.target.value); },
       removeCategory: function () {
         setState(function (st) {
           const ba = {};
@@ -506,9 +551,20 @@ function computeVals() {
   const realSpend = rawSpend - transferTotal + cashTotal;
   const usedReal = Math.max(0, usedRaw - transferTotal + cashTotal);
   const cashRowsSorted = monthCash.slice().sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+  function setCashField(id, patch) {
+    setState(function (st) {
+      const cbm = Object.assign({}, st.cashExpensesByMonth);
+      cbm[vm] = (cbm[vm] || []).map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; });
+      return { cashExpensesByMonth: cbm };
+    });
+  }
   const cashRows = cashRowsSorted.map(function (c) {
     return {
-      id: c.id, name: c.name, note: c.note, amountFmt: fmt(c.amount), dateLabel: dateShortLabel(c.date),
+      id: c.id, name: c.name, note: c.note, amount: c.amount, amountFmt: fmt(c.amount), date: c.date, dateLabel: dateShortLabel(c.date),
+      onName: function (e) { setCashField(c.id, { name: e.target.value }); },
+      onAmount: function (e) { setCashField(c.id, { amount: Math.max(0, +e.target.value || 0) }); },
+      onNote: function (e) { setCashField(c.id, { note: e.target.value }); },
+      onDate: function (e) { setCashField(c.id, { date: e.target.value }); },
       remove: function () {
         setState(function (st) {
           const cbm = Object.assign({}, st.cashExpensesByMonth);
@@ -560,9 +616,19 @@ function computeVals() {
   const spendGoalMsg = spendGoalOver ? ('目標より ' + fmt(spendGoalGap) + '円 超過') : ('あと ' + fmt(-spendGoalGap) + '円 の余裕');
   const spendGoalColor = spendGoalOver ? 'var(--red)' : 'var(--green)';
 
+  function setTransferField(id, patch) {
+    setState(function (st) {
+      const tbm = Object.assign({}, st.transfersByMonth);
+      tbm[vm] = (tbm[vm] || []).map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; });
+      return { transfersByMonth: tbm };
+    });
+  }
   const transferRows = monthTransfers.map(function (tr) {
     return {
-      id: tr.id, name: tr.name, note: tr.note, amountFmt: fmt(tr.amount), taxAdvantaged: !!tr.taxAdvantaged,
+      id: tr.id, name: tr.name, note: tr.note, amount: tr.amount, amountFmt: fmt(tr.amount), taxAdvantaged: !!tr.taxAdvantaged,
+      onName: function (e) { setTransferField(tr.id, { name: e.target.value }); },
+      onAmount: function (e) { setTransferField(tr.id, { amount: Math.max(0, +e.target.value || 0) }); },
+      onNote: function (e) { setTransferField(tr.id, { note: e.target.value }); },
       remove: function () {
         setState(function (st) {
           const tbm = Object.assign({}, st.transfersByMonth);
@@ -606,22 +672,43 @@ function computeVals() {
   const habitRows = habitDefs.map(function (hb) {
     const off = !!s.habitsOff[hb.id];
     return {
-      id: hb.id, name: hb.name, freq: hb.freq, off: off,
+      id: hb.id, name: hb.name, freq: hb.freq, off: off, month: hb.month,
       monthFmt: fmt(hb.month), yearFmt: fmt(hb.month * 12),
       msg: off ? ('中止すると年 ' + fmt(hb.month * 12) + '円の削減。投資プランに反映済み') : '継続中・明細から自動検出',
       toggle: function () { setState(function (st) { const ho = Object.assign({}, st.habitsOff); ho[hb.id] = !ho[hb.id]; return { habitsOff: ho }; }); },
       remove: function () { setState(function (st) { return { habits: st.habits.filter(function (x) { return x.id !== hb.id; }) }; }); },
+      onNameChange: function (e) {
+        setState(function (st) { return { habits: st.habits.map(function (x) { return x.id === hb.id ? Object.assign({}, x, { name: e.target.value }) : x; }) }; });
+      },
+      onMonthChange: function (e) {
+        const val = Math.max(0, +e.target.value || 0);
+        setState(function (st) { return { habits: st.habits.map(function (x) { return x.id === hb.id ? Object.assign({}, x, { month: val }) : x; }) }; });
+      },
     };
   });
 
   const fixed = s.expTab === 'fixed';
 
-  const eventRows = s.events.map(function (ev) {
+  function setEvent(idx, patch) {
+    setState(function (st) {
+      return { events: st.events.map(function (e, i) { return i === idx ? Object.assign({}, e, patch) : e; }) };
+    });
+  }
+  function removeEvent(idx) {
+    setState(function (st) { return { events: st.events.filter(function (e, i) { return i !== idx; }) }; });
+  }
+  const eventRows = s.events.map(function (ev, idx) {
     const rate = RATES[ev.currency] || 1;
     const jpy = function (n) { return Math.round(n * rate); };
     const isFx = ev.currency !== 'JPY';
     return {
-      name: ev.name, when: ev.when,
+      name: ev.name, when: ev.when, currency: ev.currency, targetRaw: ev.target, savedRaw: ev.saved, monthlyRaw: ev.monthly,
+      onName: function (e) { setEvent(idx, { name: e.target.value }); },
+      onWhen: function (e) { setEvent(idx, { when: e.target.value }); },
+      onSaved: function (e) { setEvent(idx, { saved: Math.max(0, +e.target.value || 0) }); },
+      onTarget: function (e) { setEvent(idx, { target: Math.max(1, +e.target.value || 0) }); },
+      onMonthly: function (e) { setEvent(idx, { monthly: Math.max(0, +e.target.value || 0) }); },
+      remove: function () { removeEvent(idx); },
       progress: isFx
         ? (SYM[ev.currency] + fmt(ev.saved) + ' / ' + SYM[ev.currency] + fmt(ev.target))
         : ((ev.saved / 10000).toFixed(1) + ' / ' + (ev.target / 10000).toFixed(0) + '万'),
@@ -941,7 +1028,9 @@ function computeVals() {
       const ne = { name: s.evName.trim(), when: s.evWhen || '時期未定', currency: s.evCurrency, target: amt, saved: 0, monthly: Math.round(amt / months) };
       setState(function (st) { return { events: st.events.concat([ne]), addEventOpen: false, evName: '', evWhen: '' }; });
     },
-    goHome: go('home'), goSalary: go('salary'), goExpense: go('expense'), goBudget: go('budget'), goInvest: go('invest'),
+    goHome: go('home'), goSalary: go('salary'), goExpense: go('expense'), goInvest: go('invest'),
+    goBudget: function () { setState({ screen: 'budget', budgetTab: 'budget', menuOpen: false }); },
+    goLifeEvents: function () { setState({ screen: 'budget', budgetTab: 'lifeEvent', menuOpen: false }); },
     netFmt: fmt(t.net), surplusFmt: fmt(surplus),
     investGapManFmt: Math.max(0, gap / 10000).toFixed(1),
     tabs: tabs,
@@ -965,6 +1054,8 @@ function computeVals() {
     setFixed: function () { setState({ expTab: 'fixed' }); }, setVariable: function () { setState({ expTab: 'variable' }); },
     setTransferTab: function () { setState({ expTab: 'transfer' }); },
     fixedTab: ft, varTab: vt, transferTab: trTab,
+    isBudgetTab: s.budgetTab === 'budget', isLifeEventTab: s.budgetTab === 'lifeEvent',
+    setBudgetTab: function () { setState({ budgetTab: 'budget' }); }, setLifeEventTab: function () { setState({ budgetTab: 'lifeEvent' }); },
     rawSpendFmt: fmt(rawSpend), realSpendFmt: fmt(realSpend), usedRealFmt: fmt(usedReal),
     savingsGoal: savingsGoal, savingsGoalFmt: fmt(savingsGoal), savingsGoalPct: savingsGoalPct, savingsGoalMsg: savingsGoalMsg, savingsGoalColor: savingsGoalColor,
     onSavingsGoal: function (e) { setState({ savingsGoal: +e.target.value }); },
@@ -1203,7 +1294,7 @@ function screenHome(v) {
   ) : h('div', { style: { fontSize: '12px', color: 'var(--muted2)', padding: '4px 0 8px 0' } }, 'この月は予算内に収まっています');
 
   const shortcuts = h('div', { style: { display: 'flex', gap: '24px', marginTop: '4px' } }, [
-    h('div', { style: { flex: '1', cursor: 'pointer' }, onclick: v.goBudget }, [
+    h('div', { style: { flex: '1', cursor: 'pointer' }, onclick: v.goLifeEvents }, [
       h('div', { style: { fontSize: '11px', color: 'var(--muted2)', letterSpacing: '.08em' } }, 'ライフイベント積立'),
       h('div', { style: { fontSize: '20px', fontWeight: '300', marginTop: '4px', fontVariantNumeric: 'tabular-nums' } }, [v.eventMonthlyFmt, h('span', { style: { fontSize: '11px', color: 'var(--muted)' } }, '円')]),
       h('div', { style: { fontSize: '11px', color: 'var(--muted2)', marginTop: '2px' } }, v.eventCount + '件 順調'),
@@ -1275,13 +1366,19 @@ function screenExpense(v) {
       h('div', { class: 'list' },
         v.transferRows.map(function (tr) {
           return listRow([
-            h('div', { class: 'row-flex' }, [
-              h('div', {}, [
-                h('div', { class: 'row-top' }, [tr.name, tr.taxAdvantaged ? h('span', { style: { fontSize: '10px', color: 'var(--green)', marginLeft: '6px' } }, 'NISA') : null]),
-                h('div', { class: 'row-note', style: { marginTop: '2px' } }, tr.note),
+            h('div', { style: { display: 'flex', gap: '10px', alignItems: 'flex-start' } }, [
+              h('div', { style: { flex: '1' } }, [
+                h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [
+                  h('input', { class: 'field-input', style: { fontSize: '13px', fontWeight: '500', padding: '0' }, 'data-field': 'transferName-' + tr.id, value: tr.name, oninput: tr.onName }),
+                  tr.taxAdvantaged ? h('span', { style: { fontSize: '10px', color: 'var(--green)', flexShrink: '0' } }, 'NISA') : null,
+                ]),
+                h('input', { class: 'field-input', style: { fontSize: '11px', color: 'var(--muted2)', padding: '4px 0 0 0', border: 'none' }, 'data-field': 'transferNote-' + tr.id, value: tr.note, placeholder: 'メモ', oninput: tr.onNote }),
               ]),
               h('div', { style: { textAlign: 'right' } }, [
-                h('div', { class: 'row-value' }, tr.amountFmt + '円'),
+                h('input', {
+                  class: 'budget-used-input', style: { width: '90px', textAlign: 'right' }, 'data-field': 'transferAmount-' + tr.id, type: 'number', value: tr.amount, min: '0', step: '100',
+                  oninput: tr.onAmount,
+                }),
                 h('div', { class: 'link-quiet', style: { marginTop: '4px', fontSize: '11px' }, onclick: tr.remove }, '削除'),
               ]),
             ]),
@@ -1372,13 +1469,20 @@ function screenExpense(v) {
       h('div', { class: 'list' },
         v.cashRows.map(function (c) {
           return listRow([
-            h('div', { class: 'row-flex' }, [
-              h('div', {}, [
-                h('div', { class: 'row-top' }, [c.name, c.dateLabel ? h('span', { class: 'row-note', style: { marginLeft: '8px' } }, c.dateLabel) : null]),
-                h('div', { class: 'row-note', style: { marginTop: '2px' } }, c.note),
+            h('div', { style: { display: 'flex', gap: '10px', alignItems: 'flex-start' } }, [
+              h('div', { style: { flex: '1' } }, [
+                h('input', { class: 'field-input', style: { fontSize: '13px', fontWeight: '500', padding: '0' }, 'data-field': 'cashName-' + c.id, value: c.name, oninput: c.onName }),
+                h('input', { class: 'field-input', style: { fontSize: '11px', color: 'var(--muted2)', padding: '4px 0 0 0', border: 'none' }, 'data-field': 'cashNote-' + c.id, value: c.note, placeholder: 'メモ', oninput: c.onNote }),
               ]),
               h('div', { style: { textAlign: 'right' } }, [
-                h('div', { class: 'row-value' }, c.amountFmt + '円'),
+                h('input', {
+                  class: 'budget-used-input', style: { width: '90px', textAlign: 'right' }, 'data-field': 'cashAmount-' + c.id, type: 'number', value: c.amount, min: '0', step: '100',
+                  oninput: c.onAmount,
+                }),
+                h('input', {
+                  class: 'field-input', style: { fontSize: '11px', marginTop: '4px', padding: '0', textAlign: 'right', border: 'none' }, 'data-field': 'cashDate-' + c.id, type: 'date', value: c.date,
+                  oninput: c.onDate,
+                }),
                 h('div', { class: 'link-quiet', style: { marginTop: '4px', fontSize: '11px' }, onclick: c.remove }, '削除'),
               ]),
             ]),
@@ -1503,17 +1607,20 @@ function screenHabit(v) {
       return listRow([
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
           h('div', { style: { flex: '1' } }, [
-            h('div', { class: 'row-top' }, hb.name),
+            h('input', { class: 'field-input', style: { fontSize: '13px', fontWeight: '500', padding: '0' }, 'data-field': 'habitName-' + hb.id, value: hb.name, oninput: hb.onNameChange }),
             h('div', { class: 'row-note', style: { marginTop: '2px' } }, hb.freq),
           ]),
           h('div', { class: 'switch', style: { background: hb.off ? 'var(--border2)' : 'var(--green)' }, onclick: hb.toggle }, [
             h('div', { class: 'switch-knob', style: { left: hb.off ? '2px' : '18px' } }),
           ]),
         ]),
-        h('div', { style: { display: 'flex', gap: '24px' } }, [
+        h('div', { style: { display: 'flex', gap: '24px', alignItems: 'baseline' } }, [
           h('div', {}, [
             h('div', { style: { fontSize: '11px', color: 'var(--muted2)' } }, '月にすると'),
-            h('div', { style: { fontSize: '15px', fontWeight: '400', marginTop: '2px', fontVariantNumeric: 'tabular-nums' } }, hb.monthFmt + '円'),
+            h('input', {
+              class: 'budget-used-input', style: { width: '80px', marginTop: '2px' }, 'data-field': 'habitMonth-' + hb.id, type: 'number', value: hb.month, min: '0', step: '100',
+              oninput: hb.onMonthChange,
+            }),
           ]),
           h('div', {}, [
             h('div', { style: { fontSize: '11px', color: 'var(--muted2)' } }, '年にすると'),
@@ -1547,21 +1654,31 @@ function screenHabit(v) {
 }
 
 function screenBudget(v) {
+  const tabs = segTabs([
+    { label: '予算', active: v.isBudgetTab, onclick: v.setBudgetTab },
+    { label: 'ライフイベント', active: v.isLifeEventTab, onclick: v.setLifeEventTab },
+  ]);
+
   const budgetList = h('div', { class: 'list' },
     v.budgetRows.map(function (b) {
       return listRow([
         h('div', { class: 'row-flex' }, [
-          h('div', { class: 'row-top' }, b.name),
-          h('div', { style: { fontSize: '12px', color: b.color, fontVariantNumeric: 'tabular-nums' } }, b.pctLabel + '%'),
+          h('input', { class: 'field-input', style: { fontSize: '13px', fontWeight: '500', flex: '1', padding: '0' }, 'data-field': 'budgetName-' + b.id, value: b.name, oninput: b.onNameChange }),
+          h('div', { style: { fontSize: '12px', color: b.color, fontVariantNumeric: 'tabular-nums', marginLeft: '10px' } }, b.pctLabel + '%'),
         ]),
         h('div', { class: 'progress-track' }, [h('div', { style: { width: b.pct, background: b.color } })]),
         h('div', { class: 'row-flex', style: { marginTop: '2px' } }, [
           h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '4px' } }, [
             h('input', {
-              class: 'budget-used-input', 'data-field': 'budgetUsed-' + b.id, type: 'number', value: b.used, min: '0', step: '100',
+              class: 'budget-used-input', style: { width: '64px' }, 'data-field': 'budgetUsed-' + b.id, type: 'number', value: b.used, min: '0', step: '100',
               oninput: b.onUsedChange,
             }),
-            h('span', { class: 'row-note' }, '円 / ' + b.capFmt + '円'),
+            h('span', { class: 'row-note' }, '円 / 予算'),
+            h('input', {
+              class: 'budget-used-input', style: { width: '64px' }, 'data-field': 'budgetCap-' + b.id, type: 'number', value: b.cap, min: '1', step: '1000',
+              oninput: b.onCapChange,
+            }),
+            h('span', { class: 'row-note' }, '円'),
           ]),
           h('div', { class: 'link-quiet', style: { fontSize: '11px' }, onclick: b.removeCategory }, '削除'),
         ]),
@@ -1585,13 +1702,26 @@ function screenBudget(v) {
   ]) : null;
 
   const eventList = h('div', { class: 'list' },
-    v.eventRows.map(function (ev) {
+    v.eventRows.map(function (ev, i) {
       return listRow([
-        h('div', { class: 'row-flex' }, [
-          h('div', { class: 'row-top' }, [ev.name + ' ', h('span', { class: 'row-note' }, ev.when)]),
-          h('div', { class: 'row-note' }, [ev.progress + ' ', h('span', { style: { color: 'var(--fg)' } }, '月' + ev.monthly)]),
+        h('div', { style: { display: 'flex', gap: '10px' } }, [
+          h('input', { class: 'field-input', style: { flex: '2' }, 'data-field': 'evEditName-' + i, value: ev.name, oninput: ev.onName }),
+          h('input', { class: 'field-input', style: { flex: '1' }, 'data-field': 'evEditWhen-' + i, value: ev.when, placeholder: '時期', oninput: ev.onWhen }),
         ]),
         h('div', { class: 'progress-track' }, [h('div', { style: { width: ev.pct, background: ev.barColor } })]),
+        h('div', { class: 'row-flex', style: { marginTop: '2px' } }, [
+          h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '4px' } }, [
+            h('span', { class: 'row-note' }, '積立済 ' + SYM[ev.currency]),
+            h('input', { class: 'budget-used-input', style: { width: '70px' }, 'data-field': 'evEditSaved-' + i, type: 'number', value: ev.savedRaw, min: '0', oninput: ev.onSaved }),
+            h('span', { class: 'row-note' }, '/ 目標 ' + SYM[ev.currency]),
+            h('input', { class: 'budget-used-input', style: { width: '70px' }, 'data-field': 'evEditTarget-' + i, type: 'number', value: ev.targetRaw, min: '1', oninput: ev.onTarget }),
+          ]),
+          h('div', { class: 'link-quiet', style: { fontSize: '11px' }, onclick: ev.remove }, '削除'),
+        ]),
+        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: '4px' } }, [
+          h('span', { class: 'row-note' }, '月々の積立額 ' + SYM[ev.currency]),
+          h('input', { class: 'budget-used-input', style: { width: '70px' }, 'data-field': 'evEditMonthly-' + i, type: 'number', value: ev.monthlyRaw, min: '0', oninput: ev.onMonthly }),
+        ]),
         ev.fxNote ? h('div', { class: 'row-note' }, ev.fxNote) : null,
       ]);
     })
@@ -1626,14 +1756,15 @@ function screenBudget(v) {
     ]),
   ]) : null;
 
-  return h('div', {}, [
-    h('div', { class: 'screen-title' }, '予算とライフイベント'),
-    monthSwitcher(v),
-    h('div', { class: 'section-label', style: { marginTop: '4px' } }, v.viewMonthLabel + 'の予算実績（タップして入力）'),
+  const budgetBody = h('div', {}, [
+    h('div', { class: 'section-label', style: { marginTop: '4px' } }, v.viewMonthLabel + 'の予算実績（実績を入力・予算はタップして編集）'),
     budgetList,
     addCategoryForm,
     h('div', { style: { textAlign: 'center', margin: '8px 0 0 0' } }, [h('span', { class: 'btn-add', onclick: v.openAddCategory }, '＋ カテゴリを追加')]),
-    h('div', { class: 'row-flex', style: { margin: '24px 0 0 0' } }, [
+  ]);
+
+  const lifeEventBody = h('div', {}, [
+    h('div', { class: 'row-flex' }, [
       h('div', { class: 'section-label', style: { margin: '0' } }, 'ライフイベント積立'),
       h('div', { style: { fontSize: '11px', color: 'var(--muted)' } }, '月 ' + v.eventMonthlyFmt + '円 確保中'),
     ]),
@@ -1641,6 +1772,13 @@ function screenBudget(v) {
     h('div', { style: { fontSize: '12px', color: 'var(--muted2)', margin: '12px 0 20px 0' } }, '外貨建ての予算は毎日の為替レートで自動円換算されます'),
     addForm,
     h('div', { style: { textAlign: 'center' } }, [h('span', { class: 'btn-add', onclick: v.openAddEvent }, '＋ イベントを追加')]),
+  ]);
+
+  return h('div', {}, [
+    h('div', { class: 'screen-title' }, '予算とライフイベント'),
+    monthSwitcher(v),
+    tabs,
+    v.isBudgetTab ? budgetBody : lifeEventBody,
   ]);
 }
 
@@ -2061,6 +2199,7 @@ function renderTopbar(v) {
       h('div', { class: 'menu-btn-line' }), h('div', { class: 'menu-btn-line' }), h('div', { class: 'menu-btn-line' }),
     ]),
     h('div', { class: 'topbar-title' }, 'KAKEIBO'),
+    h('div', { id: 'sync-status', class: 'sync-status', style: { color: syncStatusView().color } }, syncStatusView().text),
   ]);
 }
 
@@ -2072,6 +2211,11 @@ function renderMenu(v) {
       h('div', {}, v.tabs.map(function (t) {
         return h('div', { class: 'menu-item', style: { color: t.active ? 'var(--fg)' : 'var(--muted)' }, onclick: t.go }, t.label);
       })),
+      h('div', { class: 'menu-panel-title', style: { marginTop: '20px' } }, '設定'),
+      h('div', {}, [
+        h('div', { class: 'menu-item', style: { color: v.isGoalSettings ? 'var(--fg)' : 'var(--muted)' }, onclick: v.goGoalSettings }, '目標の設定'),
+        h('div', { class: 'menu-item', style: { color: v.isSalarySettings ? 'var(--fg)' : 'var(--muted)' }, onclick: v.goSalarySettings }, '給与・賞与の設定'),
+      ]),
       h('div', { class: 'menu-item', style: { color: 'var(--muted)' }, onclick: signOut }, 'ログアウト'),
     ]),
   ]);

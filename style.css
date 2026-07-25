@@ -94,6 +94,11 @@ a { color: var(--primary2); text-decoration: none; }
 }
 .menu-btn-line { width: 18px; height: 1.5px; background: var(--muted); }
 
+.sync-status {
+  font-size: 10px; letter-spacing: .04em; white-space: nowrap;
+  min-width: 32px; text-align: right;
+}
+
 /* ---------- drawer menu ---------- */
 .menu-overlay {
   position: absolute; inset: 0;
