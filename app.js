@@ -139,15 +139,65 @@ function setState(patch) {
   render();
 }
 
+// Card statements use full-width (zenkaku) Latin letters/punctuation/spaces
+// ('ＣＬＡＵＤＥ', '．', '　'); normalize to half-width before keyword matching.
+function toHalfWidth(str) {
+  return str
+    .replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/　/g, ' ');
+}
+
+/* Map a raw card-statement merchant string to a stable id + clean display
+   name (+ billing cycle), so real recurring charges (Claude, Google One,
+   Udemy, ...) show up by name instead of generic placeholders. */
+const SUB_NAME_RULES = [
+  [/claude|anthropic/i, 'claude', 'Claude', 'monthly'],
+  [/google.*one/i, 'google-one', 'Google One', 'monthly'],
+  [/suno/i, 'suno', 'Suno', 'monthly'],
+  [/udemy/i, 'udemy', 'Udemy', 'monthly'],
+  [/midjourney/i, 'midjourney', 'Midjourney', 'monthly'],
+  [/educative/i, 'educative', 'Educative', 'monthly'],
+  [/paddle.*speak/i, 'speak', 'Speak', 'monthly'],
+  [/cursor/i, 'cursor', 'Cursor', 'monthly'],
+  [/pdfguru/i, 'pdfguru', 'PDFGuru', 'monthly'],
+  [/uber.*one/i, 'uber-one', 'Uber One', 'monthly'],
+  [/jal.*club.*est/i, 'jal-club-est', 'JAL CLUB EST', 'annual'],
+  [/jalカード年会費|jal.*card.*fee/i, 'jal-card', 'JALカード', 'annual'],
+  [/ツアープレミアム/, 'jal-tour-premium', 'JALツアープレミアム', 'annual'],
+  [/toho.*one/i, 'toho-one', 'TOHO-ONE', 'annual'],
+  [/ご利用代金明細書交付手数料/, 'statement-fee', '利用明細発行手数料', 'monthly'],
+];
+function canonicalSubName(rawMerchant) {
+  const merchant = toHalfWidth(rawMerchant).trim();
+  for (const rule of SUB_NAME_RULES) if (rule[0].test(merchant)) return { id: rule[1], name: rule[2], cycle: rule[3] };
+  const id = 'sub-' + merchant.toLowerCase().replace(/[^a-z0-9ぁ-んァ-ン一-龠]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  const isAnnual = /年会費|年間登録/.test(merchant);
+  return { id: id || 'sub-other', name: merchant, cycle: isAnnual ? 'annual' : 'monthly' };
+}
+
 function loadCardTransactions() {
-  sb.from('card_transactions').select('statement_month,amount,category_id').eq('user_id', session.user.id)
+  sb.from('card_transactions').select('statement_month,amount,category_id,merchant').eq('user_id', session.user.id)
     .then(function (res) {
       if (res.error) throw res.error;
       const byMonth = {};
+      const subTxByMonth = {}; // id -> { name, cycle, byMonth: { month: amount } }
       res.data.forEach(function (r) {
         const m = byMonth[r.statement_month] || (byMonth[r.statement_month] = {});
         m[r.category_id] = (m[r.category_id] || 0) + Number(r.amount);
+        if (r.category_id === 'sub') {
+          const c = canonicalSubName(r.merchant);
+          const entry = subTxByMonth[c.id] || (subTxByMonth[c.id] = { name: c.name, cycle: c.cycle, byMonth: {} });
+          entry.byMonth[r.statement_month] = (entry.byMonth[r.statement_month] || 0) + Number(r.amount);
+        }
       });
+
+      const derivedSubs = Object.keys(subTxByMonth).map(function (id) {
+        const entry = subTxByMonth[id];
+        const months = Object.keys(entry.byMonth).sort();
+        const latestMonth = months[months.length - 1];
+        return { id: id, name: entry.name, price: Math.round(entry.byMonth[latestMonth]), cycle: entry.cycle };
+      });
+
       setState(function (st) {
         const ba = Object.assign({}, st.budgetActuals);
         Object.keys(byMonth).forEach(function (mk) {
@@ -161,7 +211,21 @@ function loadCardTransactions() {
           });
           ba[mk] = merged;
         });
-        return { budgetActuals: ba, dbLoaded: true };
+
+        // Real imported subscriptions replace the generic starter placeholders,
+        // but keep whatever usage classification the user already set for a
+        // subscription that's still present (matched by its stable id).
+        let subs = st.subs;
+        if (derivedSubs.length > 0) {
+          const prevById = {};
+          st.subs.forEach(function (s) { prevById[s.id] = s; });
+          subs = derivedSubs.map(function (d) {
+            const prev = prevById[d.id];
+            return { id: d.id, name: d.name, price: d.price, cycle: d.cycle, usage: prev ? prev.usage : 'mid' };
+          });
+        }
+
+        return { budgetActuals: ba, subs: subs, dbLoaded: true };
       });
     })
     .catch(function (e) { console.error('カード明細の取得に失敗しました', e); });
