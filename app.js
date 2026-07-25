@@ -113,15 +113,23 @@ let state = null;   // app state; only populated once a user is authenticated an
 function userStorageKey() { return STORAGE_KEY + ':' + session.user.id; }
 
 let pendingSyncTimer = null;
+function flushSync() {
+  if (pendingSyncTimer) { clearTimeout(pendingSyncTimer); pendingSyncTimer = null; }
+  if (!session) return;
+  sb.from('user_state').upsert({ user_id: session.user.id, data: state, updated_at: new Date().toISOString() })
+    .then(function (res) { if (res.error) console.error('状態の保存に失敗しました', res.error); });
+}
 function scheduleSync() {
   if (!session) return;
   if (pendingSyncTimer) clearTimeout(pendingSyncTimer);
-  pendingSyncTimer = setTimeout(function () {
-    pendingSyncTimer = null;
-    sb.from('user_state').upsert({ user_id: session.user.id, data: state, updated_at: new Date().toISOString() })
-      .then(function (res) { if (res.error) console.error('状態の保存に失敗しました', res.error); });
-  }, 800);
+  pendingSyncTimer = setTimeout(flushSync, 800);
 }
+// Best-effort: if the tab is closed/navigated away while a sync is still
+// debouncing, flush immediately instead of losing the last ~800ms of edits.
+window.addEventListener('pagehide', function () { if (pendingSyncTimer) flushSync(); });
+window.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden' && pendingSyncTimer) flushSync();
+});
 
 function setState(patch) {
   const next = typeof patch === 'function' ? patch(state) : patch;
@@ -504,10 +512,9 @@ function computeVals() {
     .concat(s.subs.filter(function (x) { return x.usage === 'mid'; }).map(function (x) {
       return { id: 'sub-' + x.id, label: x.name + ' を一時停止', note: '活用度: 低・利用月のみの契約も検討', save: subMonthly(x) };
     }))
-    .concat([
-      { id: 'movie', label: '映画を月3回→月1回に', note: '6月は109プレミアム9,000円も', save: 9380 },
-      { id: 'etc', label: 'ETCを下道・特割中心に', note: '月19,010円 → 13,000円目安', save: 6000 },
-    ]);
+    .concat(habitDefs.filter(function (hb) { return !s.habitsOff[hb.id]; }).map(function (hb) {
+      return { id: 'habit-' + hb.id, label: hb.name + ' を減らす', note: hb.freq + '・月' + fmt(hb.month) + '円', save: Math.round(hb.month * 0.3) };
+    }));
 
   const cutsTotal = cutDefs.reduce(function (a, c) { return a + (s.cuts[c.id] ? c.save : 0); }, 0);
   const gap = s.invTarget - surplus - cutsTotal;
