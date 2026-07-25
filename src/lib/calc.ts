@@ -15,6 +15,21 @@ export function monthLabel(key: string): string {
 export function isoDate(d: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+/** 「2027年6月」「2027-6」等の時期文字列を <input type="month"> 用の "2027-06" に正規化。読めなければ ''。 */
+export function whenToMonthValue(when: string): string {
+  const m = when.match(/^(\d{4})[年-](\d{1,2})月?$/);
+  return m ? m[1] + '-' + m[2].padStart(2, '0') : '';
+}
+/** "2027-06" → 「2027年6月」。空なら「時期未定」。 */
+export function monthValueToWhen(v: string): string {
+  return v ? monthLabel(v) : '時期未定';
+}
+/** 今月から対象月("YYYY-MM")までの残り月数。過去や当月は最低1。 */
+export function monthsUntilMonth(v: string, from: Date = new Date()): number {
+  const parts = v.split('-');
+  const diff = (+parts[0] - from.getFullYear()) * 12 + (+parts[1] - (from.getMonth() + 1));
+  return Math.max(1, diff);
+}
 export function dateShortLabel(iso?: string): string {
   if (!iso) return '';
   const parts = iso.split('-');

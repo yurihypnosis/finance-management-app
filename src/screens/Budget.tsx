@@ -150,8 +150,8 @@ export function Budget({ v }: { v: Computed }) {
               <input className="field-input" value={editEvent.name} onChange={editEvent.onName} />
             </div>
             <div>
-              <span className="field-label">時期</span>
-              <input className="field-input" value={editEvent.when} placeholder="時期" onChange={editEvent.onWhen} />
+              <span className="field-label">時期{editEvent.whenMonthValue ? '' : '（未設定: ' + editEvent.when + '）'}</span>
+              <input className="field-input" type="month" value={editEvent.whenMonthValue} onChange={editEvent.onWhen} />
             </div>
             {editEvent.fxNote && <div className="row-note">{editEvent.fxNote}</div>}
             <div className="bud-sheet-actions">
@@ -177,7 +177,10 @@ export function Budget({ v }: { v: Computed }) {
       <Sheet open={v.addEventOpen} onClose={v.closeAddEvent} title="イベントを追加">
         <div className="bud-form">
           <input className="field-input" value={v.evName} placeholder="例: ハワイ旅行" autoFocus onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvName} />
-          <input className="field-input" value={v.evWhen} placeholder="時期（例: 2027年6月）" onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvWhen} />
+          <div>
+            <span className="field-label">時期（いつまでに）</span>
+            <input className="field-input" type="month" value={v.evWhen} min={v.evWhenMin} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvWhen} />
+          </div>
           <div className="bud-form-row">
             <div className="bud-form-col-2">
               <span className="field-label">目標金額</span>
@@ -188,10 +191,6 @@ export function Budget({ v }: { v: Computed }) {
               <select className="field-select" value={v.evCurrency} onChange={v.onEvCurrency}>
                 <option value="JPY">JPY 円</option><option value="USD">USD ドル</option><option value="EUR">EUR ユーロ</option>
               </select>
-            </div>
-            <div className="bud-form-col-1">
-              <span className="field-label">積立月数</span>
-              <input className="field-input" type="number" value={v.evMonths} min={1} max={120} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvMonths} />
             </div>
           </div>
           <div className="row-note">{v.evMonthlyPreview}</div>

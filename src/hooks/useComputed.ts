@@ -1,6 +1,7 @@
 import { useAppStore } from '../store/appStore';
 import {
   monthKey, shiftMonthKey, monthLabel, isoDate, dateShortLabel,
+  whenToMonthValue, monthValueToWhen, monthsUntilMonth,
   RATES, SYM, COACH_ON, fmt, mean, stdev, Z80, subMonthly, subAnnual, tax, bonusTax,
 } from '../lib/calc';
 import type { AppState } from '../lib/types';
@@ -255,8 +256,9 @@ export function useComputed() {
     const ratio = ev.target > 0 ? ev.saved / ev.target : 0;
     return {
       idx, name: ev.name, when: ev.when, currency: ev.currency, targetRaw: ev.target, savedRaw: ev.saved, monthlyRaw: ev.monthly,
+      whenMonthValue: whenToMonthValue(ev.when),
       onName: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { name: e.target.value }),
-      onWhen: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { when: e.target.value }),
+      onWhen: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { when: monthValueToWhen(e.target.value) }),
       onSaved: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { saved: Math.max(0, +e.target.value || 0) }),
       onTarget: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { target: Math.max(1, +e.target.value || 0) }),
       onMonthly: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { monthly: Math.max(0, +e.target.value || 0) }),
@@ -603,25 +605,30 @@ export function useComputed() {
     addEventOpen: s.addEventOpen,
     openAddEvent: () => setState({ addEventOpen: true }), closeAddEvent: () => setState({ addEventOpen: false }),
     evName: s.evName, evWhen: s.evWhen, evAmount: s.evAmount, evMonths: s.evMonths, evCurrency: s.evCurrency,
+    // <input type="month"> の下限。過去の月を選んでも monthsUntilMonth が最低1に丸めるが、UI 上も選ばせない。
+    evWhenMin: currentRealMonth,
     onEvName: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evName: e.target.value }),
-    onEvWhen: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evWhen: e.target.value }),
+    onEvWhen: (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = e.target.value;
+      setState({ evWhen: v, evMonths: v ? monthsUntilMonth(v) : 12 });
+    },
     onEvAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evAmount: +e.target.value }),
-    onEvMonths: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evMonths: +e.target.value }),
     onEvCurrency: (e: React.ChangeEvent<HTMLSelectElement>) => setState({ evCurrency: e.target.value }),
     evMonthlyPreview: (() => {
-      const amt = +s.evAmount || 0, months = Math.max(1, +s.evMonths || 1);
+      const amt = +s.evAmount || 0, months = s.evWhen ? monthsUntilMonth(s.evWhen) : Math.max(1, +s.evMonths || 1);
       const rate = RATES[s.evCurrency] || 1;
       const per = amt / months;
+      const until = s.evWhen ? monthLabel(s.evWhen) + 'まで・' : '';
       return s.evCurrency === 'JPY'
-        ? '月 ' + fmt(per) + '円 × ' + months + 'ヶ月'
-        : '月 ' + SYM[s.evCurrency] + fmt(per) + ' ≒ ' + fmt(per * rate) + '円 × ' + months + 'ヶ月（1 ' + s.evCurrency + ' = ' + rate.toFixed(1) + '円）';
+        ? until + '月 ' + fmt(per) + '円 × ' + months + 'ヶ月'
+        : until + '月 ' + SYM[s.evCurrency] + fmt(per) + ' ≒ ' + fmt(per * rate) + '円 × ' + months + 'ヶ月（1 ' + s.evCurrency + ' = ' + rate.toFixed(1) + '円）';
     })(),
     formEventValid: !!s.evName.trim() && (+s.evAmount || 0) > 0,
     formEventError: !s.evName.trim() ? 'イベント名を入力してください' : '目標金額を入力してください',
     addEvent: () => {
-      const amt = +s.evAmount || 0, months = Math.max(1, +s.evMonths || 1);
+      const amt = +s.evAmount || 0, months = s.evWhen ? monthsUntilMonth(s.evWhen) : Math.max(1, +s.evMonths || 1);
       if (!s.evName.trim() || amt <= 0) return;
-      const ne = { name: s.evName.trim(), when: s.evWhen || '時期未定', currency: s.evCurrency, target: amt, saved: 0, monthly: Math.round(amt / months) };
+      const ne = { name: s.evName.trim(), when: monthValueToWhen(s.evWhen), currency: s.evCurrency, target: amt, saved: 0, monthly: Math.round(amt / months) };
       setState((st) => ({ events: st.events.concat([ne]), addEventOpen: false, evName: '', evWhen: '' }));
     },
     goHome: go('home'), goSalary: go('salary'), goExpense: go('expense'), goInvest: go('invest'),
