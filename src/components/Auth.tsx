@@ -40,15 +40,7 @@ export function Auth() {
   }
 
   return (
-    <div style={{ padding: '56px 24px 40px 24px', maxWidth: '360px', margin: '0 auto' }}>
-      <div style={{
-        width: '48px', height: '48px', borderRadius: '14px', margin: '0 auto 20px auto',
-        background: 'linear-gradient(160deg, var(--primary), var(--primary2))',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '18px', color: '#fff',
-      }}>
-        家
-      </div>
+    <div style={{ padding: '72px 24px 40px 24px', maxWidth: '360px', margin: '0 auto' }}>
       <div className="topbar-title" style={{ textAlign: 'center', marginBottom: '8px' }}>KAKEIBO</div>
       <div className="screen-sub" style={{ textAlign: 'center', marginBottom: '28px' }}>{isSignup ? '新規登録' : 'ログイン'}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
