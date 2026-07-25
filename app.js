@@ -9,6 +9,16 @@ function h(tag, attrs, children) {
     if (v === undefined || v === null || v === false) continue;
     if (k === 'style') Object.assign(el.style, v);
     else if (k === 'class') el.className = v;
+    else if (k === 'oninput' && typeof v === 'function') {
+      // setState()/render() rebuilds the whole DOM tree; doing that on every
+      // keystroke destroys the input element mid-IME-composition, which
+      // cancels romaji->kana conversion (e.g. "ta" never becomes "た").
+      // Suppress commits while composing and commit once on compositionend.
+      let composing = false;
+      el.addEventListener('compositionstart', function () { composing = true; });
+      el.addEventListener('compositionend', function (e) { composing = false; v(e); });
+      el.addEventListener('input', function (e) { if (!composing && !e.isComposing) v(e); });
+    }
     else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k in el) { try { el[k] = v; } catch (e) { el.setAttribute(k, v); } }
     else el.setAttribute(k, v);
