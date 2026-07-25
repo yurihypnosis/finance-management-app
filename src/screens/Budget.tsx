@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ListRow, MonthSwitcher, SegTabs } from '../components/common';
+import { ConfirmDelete, ListRow, MonthSwitcher, NumberField, SegTabs } from '../components/common';
 import { SYM } from '../lib/calc';
 
 export function Budget({ v }: { v: Computed }) {
@@ -16,12 +16,12 @@ export function Budget({ v }: { v: Computed }) {
             <div className="progress-track"><div style={{ width: b.pct, background: b.color }} /></div>
             <div className="row-flex" style={{ marginTop: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <input className="budget-used-input" style={{ width: '64px' }} type="number" value={b.used} min={0} step={100} onChange={b.onUsedChange} />
+                <NumberField className="budget-used-input" style={{ width: '68px' }} value={b.used} min={0} step={100} onChange={b.onUsedChange} />
                 <span className="row-note">円 / 予算</span>
-                <input className="budget-used-input" style={{ width: '64px' }} type="number" value={b.cap} min={1} step={1000} onChange={b.onCapChange} />
+                <NumberField className="budget-used-input" style={{ width: '68px' }} value={b.cap} min={1} step={1000} onChange={b.onCapChange} />
                 <span className="row-note">円</span>
               </div>
-              <div className="link-quiet" style={{ fontSize: '11px' }} onClick={b.removeCategory}>削除</div>
+              <ConfirmDelete onConfirm={b.removeCategory} />
             </div>
           </ListRow>
         ))}
@@ -63,15 +63,15 @@ export function Budget({ v }: { v: Computed }) {
             <div className="row-flex" style={{ marginTop: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                 <span className="row-note">積立済 {SYM[ev.currency]}</span>
-                <input className="budget-used-input" style={{ width: '70px' }} type="number" value={ev.savedRaw} min={0} onChange={ev.onSaved} />
+                <NumberField className="budget-used-input" style={{ width: '76px' }} value={ev.savedRaw} min={0} onChange={ev.onSaved} />
                 <span className="row-note">/ 目標 {SYM[ev.currency]}</span>
-                <input className="budget-used-input" style={{ width: '70px' }} type="number" value={ev.targetRaw} min={1} onChange={ev.onTarget} />
+                <NumberField className="budget-used-input" style={{ width: '76px' }} value={ev.targetRaw} min={1} onChange={ev.onTarget} />
               </div>
-              <div className="link-quiet" style={{ fontSize: '11px' }} onClick={ev.remove}>削除</div>
+              <ConfirmDelete onConfirm={ev.remove} />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
               <span className="row-note">月々の積立額 {SYM[ev.currency]}</span>
-              <input className="budget-used-input" style={{ width: '70px' }} type="number" value={ev.monthlyRaw} min={0} onChange={ev.onMonthly} />
+              <NumberField className="budget-used-input" style={{ width: '76px' }} value={ev.monthlyRaw} min={0} onChange={ev.onMonthly} />
             </div>
             {ev.fxNote && <div className="row-note">{ev.fxNote}</div>}
           </ListRow>

@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ListRow, SegTabs } from '../components/common';
+import { ConfirmDelete, ListRow, NumberField, SegTabs } from '../components/common';
 
 export function Habit({ v }: { v: Computed }) {
   let body;
@@ -84,7 +84,7 @@ export function Habit({ v }: { v: Computed }) {
               <div style={{ display: 'flex', gap: '24px', alignItems: 'baseline' }}>
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted2)' }}>月にすると</div>
-                  <input className="budget-used-input" style={{ width: '80px', marginTop: '2px' }} type="number" value={hb.month} min={0} step={100} onChange={hb.onMonthChange} />
+                  <NumberField className="budget-used-input" style={{ width: '80px', marginTop: '2px' }} value={hb.month} min={0} step={100} onChange={hb.onMonthChange} />
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--muted2)' }}>年にすると</div>
@@ -93,7 +93,7 @@ export function Habit({ v }: { v: Computed }) {
               </div>
               <div className="row-flex">
                 <div style={{ fontSize: '12px', color: hb.off ? 'var(--green)' : 'var(--muted2)' }}>{hb.msg}</div>
-                <div className="link-quiet" style={{ fontSize: '11px' }} onClick={hb.remove}>削除</div>
+                <ConfirmDelete onConfirm={hb.remove} />
               </div>
             </ListRow>
           ))}

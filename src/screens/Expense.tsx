@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ListRow, MonthSwitcher, SegTabs } from '../components/common';
+import { ConfirmDelete, ListRow, MonthSwitcher, NumberField, SegTabs } from '../components/common';
 
 export function Expense({ v }: { v: Computed }) {
   const noteParts: string[] = [];
@@ -26,8 +26,8 @@ export function Expense({ v }: { v: Computed }) {
                   <input className="field-input" style={{ fontSize: '11px', color: 'var(--muted2)', padding: '4px 0 0 0', border: 'none' }} value={tr.note} placeholder="メモ" onChange={tr.onNote} />
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <input className="budget-used-input" style={{ width: '90px', textAlign: 'right' }} type="number" value={tr.amount} min={0} step={100} onChange={tr.onAmount} />
-                  <div className="link-quiet" style={{ marginTop: '4px', fontSize: '11px' }} onClick={tr.remove}>削除</div>
+                  <NumberField className="budget-used-input" style={{ width: '90px', textAlign: 'right' }} value={tr.amount} min={0} step={100} onChange={tr.onAmount} />
+                  <ConfirmDelete onConfirm={tr.remove} style={{ marginTop: '4px' }} />
                 </div>
               </div>
             </ListRow>
@@ -77,9 +77,9 @@ export function Expense({ v }: { v: Computed }) {
                   <input className="field-input" style={{ fontSize: '11px', color: 'var(--muted2)', padding: '4px 0 0 0', border: 'none' }} value={c.note} placeholder="メモ" onChange={c.onNote} />
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <input className="budget-used-input" style={{ width: '90px', textAlign: 'right' }} type="number" value={c.amount} min={0} step={100} onChange={c.onAmount} />
+                  <NumberField className="budget-used-input" style={{ width: '90px', textAlign: 'right' }} value={c.amount} min={0} step={100} onChange={c.onAmount} />
                   <input className="field-input" style={{ fontSize: '11px', marginTop: '4px', padding: 0, textAlign: 'right', border: 'none' }} type="date" value={c.date} onChange={c.onDate} />
-                  <div className="link-quiet" style={{ marginTop: '4px', fontSize: '11px' }} onClick={c.remove}>削除</div>
+                  <ConfirmDelete onConfirm={c.remove} style={{ marginTop: '4px' }} />
                 </div>
               </div>
             </ListRow>
@@ -139,7 +139,7 @@ export function Expense({ v }: { v: Computed }) {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div className="link-quiet" style={{ fontSize: '11px' }} onClick={r.remove}>パターンを削除</div>
+                    <ConfirmDelete onConfirm={r.remove} label="パターンを削除" />
                   </div>
                 </ListRow>
               ))}

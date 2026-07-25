@@ -4,6 +4,7 @@ import { useComputed } from './hooks/useComputed';
 import { Auth } from './components/Auth';
 import { Topbar } from './components/Topbar';
 import { Menu } from './components/Menu';
+import { BottomNav } from './components/BottomNav';
 import { Home } from './screens/Home';
 import { Expense } from './screens/Expense';
 import { Habit } from './screens/Habit';
@@ -31,10 +32,20 @@ function Screens() {
 
   return (
     <>
-      <Topbar toggleMenu={v.toggleMenu} />
+      <Topbar />
       <div id="content">{screen}</div>
       <div id="menu"><Menu v={v} /></div>
+      <BottomNav v={v} />
     </>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="loading-screen">
+      <div className="loading-mark">KAKEIBO</div>
+      <div className="loading-spinner" />
+    </div>
   );
 }
 
@@ -46,7 +57,7 @@ export function App() {
 
   useEffect(() => { bootstrap(); }, [bootstrap]);
 
-  if (!authReady) return <div id="phone" />;
+  if (!authReady) return <div id="phone"><LoadingScreen /></div>;
   if (!session || !state) return <div id="phone"><div id="content"><Auth /></div></div>;
   return (
     <div id="phone">

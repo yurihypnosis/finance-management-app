@@ -40,14 +40,22 @@ export function Auth() {
   }
 
   return (
-    <div style={{ padding: '40px 24px', maxWidth: '360px', margin: '0 auto' }}>
+    <div style={{ padding: '56px 24px 40px 24px', maxWidth: '360px', margin: '0 auto' }}>
+      <div style={{
+        width: '48px', height: '48px', borderRadius: '14px', margin: '0 auto 20px auto',
+        background: 'linear-gradient(160deg, var(--primary), var(--primary2))',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '18px', color: '#fff',
+      }}>
+        家
+      </div>
       <div className="topbar-title" style={{ textAlign: 'center', marginBottom: '8px' }}>KAKEIBO</div>
       <div className="screen-sub" style={{ textAlign: 'center', marginBottom: '28px' }}>{isSignup ? '新規登録' : 'ログイン'}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
           <span className="field-label">メールアドレス</span>
           <input
-            className="field-input" type="email" value={email} autoComplete="email"
+            className="field-input" type="email" value={email} autoComplete="email" autoFocus
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
@@ -59,8 +67,15 @@ export function Auth() {
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           />
         </div>
-        {error && <div style={{ fontSize: '12px', color: 'var(--red)' }}>{error}</div>}
-        <div className="btn-primary" style={{ textAlign: 'center' }} onClick={loading ? undefined : submit}>
+        {error && (
+          <div style={{ fontSize: '12px', color: 'var(--red)', background: 'rgba(192,123,114,.1)', padding: '10px 12px', borderRadius: '8px', lineHeight: 1.5 }}>
+            {error}
+          </div>
+        )}
+        <div
+          className="btn-primary" style={{ textAlign: 'center', opacity: loading ? .6 : 1, cursor: loading ? 'default' : 'pointer', marginTop: '4px' }}
+          onClick={loading ? undefined : submit}
+        >
           {loading ? '処理中…' : (isSignup ? '登録する' : 'ログイン')}
         </div>
         <div
