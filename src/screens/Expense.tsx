@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ConfirmDelete, ListRow, MonthSwitcher, NumberField, SegTabs } from '../components/common';
+import { ConfirmDelete, FormActions, ListRow, MonthSwitcher, NumberField, SegTabs, submitOnEnter } from '../components/common';
 
 export function Expense({ v }: { v: Computed }) {
   const noteParts: string[] = [];
@@ -42,20 +42,17 @@ export function Expense({ v }: { v: Computed }) {
           <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
             <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>資金移動を登録</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input className="field-input" value={v.formTransferName} placeholder="例: 証券口座への入金" onChange={v.onFormTransferName} />
-              <input className="field-input" value={v.formTransferNote} placeholder="メモ（任意）" onChange={v.onFormTransferNote} />
+              <input className="field-input" value={v.formTransferName} placeholder="例: 証券口座への入金" autoFocus onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferName} />
+              <input className="field-input" value={v.formTransferNote} placeholder="メモ（任意）" onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferNote} />
               <div>
                 <span className="field-label">金額（円）</span>
-                <input className="field-input" type="number" value={v.formTransferAmount} min={0} step={1000} onChange={v.onFormTransferAmount} />
+                <input className="field-input" type="number" value={v.formTransferAmount} min={0} step={1000} onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferAmount} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={v.toggleFormTransferIsNisa}>
                 <div className="check-box" style={{ borderColor: v.formTransferIsNisa ? 'var(--green)' : 'var(--border2)', background: v.formTransferIsNisa ? 'var(--green)' : 'transparent' }}>{v.formTransferIsNisa ? '✓' : ''}</div>
                 <div style={{ fontSize: '12px', color: 'var(--muted)' }}>NISA枠の利用として記録する（年間利用額の目安に反映）</div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div className="btn-primary" onClick={v.addTransfer}>登録する</div>
-                <div className="btn-cancel" onClick={v.closeAddTransfer}>やめる</div>
-              </div>
+              <FormActions valid={v.formTransferValid} errorMessage={v.formTransferError} onSubmit={v.addTransfer} onCancel={v.closeAddTransfer} />
             </div>
           </div>
         )}
@@ -94,22 +91,19 @@ export function Expense({ v }: { v: Computed }) {
           <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
             <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>現金支出を登録</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input className="field-input" value={v.formCashName} placeholder="例: 現金でのランチ" onChange={v.onFormCashName} />
+              <input className="field-input" value={v.formCashName} placeholder="例: 現金でのランチ" autoFocus onKeyDown={submitOnEnter(v.addCash)} onChange={v.onFormCashName} />
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 2 }}>
                   <span className="field-label">金額（円）</span>
-                  <input className="field-input" type="number" value={v.formCashAmount} min={0} step={100} onChange={v.onFormCashAmount} />
+                  <input className="field-input" type="number" value={v.formCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addCash)} onChange={v.onFormCashAmount} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <span className="field-label">日付</span>
                   <input className="field-input" type="date" value={v.formCashDate} onChange={v.onFormCashDate} />
                 </div>
               </div>
-              <input className="field-input" value={v.formCashNote} placeholder="メモ（任意）" onChange={v.onFormCashNote} />
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div className="btn-primary" onClick={v.addCash}>登録する</div>
-                <div className="btn-cancel" onClick={v.closeAddCash}>やめる</div>
-              </div>
+              <input className="field-input" value={v.formCashNote} placeholder="メモ（任意）" onKeyDown={submitOnEnter(v.addCash)} onChange={v.onFormCashNote} />
+              <FormActions valid={v.formCashValid} errorMessage={v.formCashError} onSubmit={v.addCash} onCancel={v.closeAddCash} />
             </div>
           </div>
         )}
@@ -149,16 +143,13 @@ export function Expense({ v }: { v: Computed }) {
             <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
               <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>固定支出パターンを登録</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <input className="field-input" value={v.formRecurringCashName} placeholder="例: 週末の駐輪場代" onChange={v.onFormRecurringCashName} />
+                <input className="field-input" value={v.formRecurringCashName} placeholder="例: 週末の駐輪場代" autoFocus onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashName} />
                 <div>
                   <span className="field-label">金額（円）</span>
-                  <input className="field-input" type="number" value={v.formRecurringCashAmount} min={0} step={100} onChange={v.onFormRecurringCashAmount} />
+                  <input className="field-input" type="number" value={v.formRecurringCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashAmount} />
                 </div>
-                <input className="field-input" value={v.formRecurringCashNote} placeholder="メモ（任意）" onChange={v.onFormRecurringCashNote} />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div className="btn-primary" onClick={v.addRecurringCash}>登録する</div>
-                  <div className="btn-cancel" onClick={v.closeAddRecurringCash}>やめる</div>
-                </div>
+                <input className="field-input" value={v.formRecurringCashNote} placeholder="メモ（任意）" onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashNote} />
+                <FormActions valid={v.formRecurringCashValid} errorMessage={v.formRecurringCashError} onSubmit={v.addRecurringCash} onCancel={v.closeAddRecurringCash} />
               </div>
             </div>
           )}

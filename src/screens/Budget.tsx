@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ConfirmDelete, ListRow, MonthSwitcher, NumberField, SegTabs } from '../components/common';
+import { ConfirmDelete, FormActions, ListRow, MonthSwitcher, NumberField, SegTabs, submitOnEnter } from '../components/common';
 import { SYM } from '../lib/calc';
 
 export function Budget({ v }: { v: Computed }) {
@@ -30,15 +30,12 @@ export function Budget({ v }: { v: Computed }) {
         <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>予算カテゴリを追加</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <input className="field-input" value={v.formCategoryName} placeholder="例: 交際費" onChange={v.onFormCategoryName} />
+            <input className="field-input" value={v.formCategoryName} placeholder="例: 交際費" autoFocus onKeyDown={submitOnEnter(v.addCategory)} onChange={v.onFormCategoryName} />
             <div>
               <span className="field-label">目標金額（円/月）</span>
-              <input className="field-input" type="number" value={v.formCategoryCap} min={0} step={1000} onChange={v.onFormCategoryCap} />
+              <input className="field-input" type="number" value={v.formCategoryCap} min={0} step={1000} onKeyDown={submitOnEnter(v.addCategory)} onChange={v.onFormCategoryCap} />
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div className="btn-primary" onClick={v.addCategory}>登録する</div>
-              <div className="btn-cancel" onClick={v.closeAddCategory}>やめる</div>
-            </div>
+            <FormActions valid={v.formCategoryValid} errorMessage={v.formCategoryError} onSubmit={v.addCategory} onCancel={v.closeAddCategory} />
           </div>
         </div>
       )}
@@ -82,12 +79,12 @@ export function Budget({ v }: { v: Computed }) {
         <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>ライフイベントを登録</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <input className="field-input" value={v.evName} placeholder="例: ハワイ旅行" onChange={v.onEvName} />
-            <input className="field-input" value={v.evWhen} placeholder="時期（例: 2027年6月）" onChange={v.onEvWhen} />
+            <input className="field-input" value={v.evName} placeholder="例: ハワイ旅行" autoFocus onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvName} />
+            <input className="field-input" value={v.evWhen} placeholder="時期（例: 2027年6月）" onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvWhen} />
             <div style={{ display: 'flex', gap: '16px' }}>
               <div style={{ flex: 2 }}>
                 <span className="field-label">目標金額</span>
-                <input className="field-input" type="number" value={v.evAmount} min={0} onChange={v.onEvAmount} />
+                <input className="field-input" type="number" value={v.evAmount} min={0} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvAmount} />
               </div>
               <div style={{ flex: 1 }}>
                 <span className="field-label">通貨</span>
@@ -97,14 +94,11 @@ export function Budget({ v }: { v: Computed }) {
               </div>
               <div style={{ flex: 1 }}>
                 <span className="field-label">積立月数</span>
-                <input className="field-input" type="number" value={v.evMonths} min={1} max={120} onChange={v.onEvMonths} />
+                <input className="field-input" type="number" value={v.evMonths} min={1} max={120} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvMonths} />
               </div>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{v.evMonthlyPreview}</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div className="btn-primary" onClick={v.addEvent}>登録する</div>
-              <div className="btn-cancel" onClick={v.closeAddEvent}>やめる</div>
-            </div>
+            <FormActions valid={v.formEventValid} errorMessage={v.formEventError} onSubmit={v.addEvent} onCancel={v.closeAddEvent} />
           </div>
         </div>
       )}

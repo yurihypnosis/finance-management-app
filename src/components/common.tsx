@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { fmt } from '../lib/calc';
+
+/** Lets a text field submit its enclosing add-form on Enter, like a normal form would. */
+export function submitOnEnter(fn: () => void) {
+  return (e: KeyboardEvent) => { if (e.key === 'Enter') fn(); };
+}
 
 export function ListRow({ children }: { children: ReactNode }) {
   return <div className="list-row">{children}</div>;
@@ -112,5 +117,36 @@ export function NumberField({ value, onChange, className, style, min, max, step,
       onBlur={() => setFocused(false)}
       onChange={(e) => { setLocal(e.target.value); onChange(e); }}
     />
+  );
+}
+
+/**
+ * "登録する"/"やめる" row for add-forms. Previously an invalid submit
+ * (empty name, zero amount) just silently did nothing — no error, no
+ * feedback, so it looked like the button was broken. Now the first
+ * invalid attempt reveals why, and the button visually reads as
+ * disabled until the form is actually submittable.
+ */
+export function FormActions({ valid, errorMessage, onSubmit, onCancel, submitLabel = '登録する' }: {
+  valid: boolean;
+  errorMessage: string;
+  onSubmit: () => void;
+  onCancel: () => void;
+  submitLabel?: string;
+}) {
+  const [showError, setShowError] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {showError && !valid && <div style={{ fontSize: '12px', color: 'var(--red)' }}>{errorMessage}</div>}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <div
+          className="btn-primary" style={{ opacity: valid ? 1 : .55 }}
+          onClick={() => { if (valid) { setShowError(false); onSubmit(); } else setShowError(true); }}
+        >
+          {submitLabel}
+        </div>
+        <div className="btn-cancel" onClick={onCancel}>やめる</div>
+      </div>
+    </div>
   );
 }

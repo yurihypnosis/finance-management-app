@@ -518,6 +518,8 @@ export function useComputed() {
     onFormTimes: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formTimes: +e.target.value }),
     onFormAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formAmount: +e.target.value }),
     formMonthFmt: fmt(formMonth), formYearFmt: fmt(formMonth * 12),
+    formHabitValid: !!s.formName.trim() && formMonth > 0,
+    formHabitError: !s.formName.trim() ? '習慣の名前を入力してください' : '週の回数と金額を入力してください',
     addHabit: () => {
       if (!s.formName.trim() || formMonth <= 0) return;
       const nh = { id: 'h' + s.habits.length + '-' + Math.random().toString(36).slice(2, 7), name: s.formName.trim(), freq: '週' + s.formTimes + '回 × ' + fmt(+s.formAmount) + '円', month: formMonth };
@@ -540,6 +542,8 @@ export function useComputed() {
         ? '月 ' + fmt(per) + '円 × ' + months + 'ヶ月'
         : '月 ' + SYM[s.evCurrency] + fmt(per) + ' ≒ ' + fmt(per * rate) + '円 × ' + months + 'ヶ月（1 ' + s.evCurrency + ' = ' + rate.toFixed(1) + '円）';
     })(),
+    formEventValid: !!s.evName.trim() && (+s.evAmount || 0) > 0,
+    formEventError: !s.evName.trim() ? 'イベント名を入力してください' : '目標金額を入力してください',
     addEvent: () => {
       const amt = +s.evAmount || 0, months = Math.max(1, +s.evMonths || 1);
       if (!s.evName.trim() || amt <= 0) return;
@@ -561,6 +565,8 @@ export function useComputed() {
     formCategoryName: s.formCategoryName, formCategoryCap: s.formCategoryCap,
     onFormCategoryName: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formCategoryName: e.target.value }),
     onFormCategoryCap: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formCategoryCap: +e.target.value }),
+    formCategoryValid: !!s.formCategoryName.trim() && (+s.formCategoryCap || 0) > 0,
+    formCategoryError: !s.formCategoryName.trim() ? 'カテゴリ名を入力してください' : '目標金額を入力してください',
     addCategory: () => {
       const cap = +s.formCategoryCap || 0;
       if (!s.formCategoryName.trim() || cap <= 0) return;
@@ -607,6 +613,8 @@ export function useComputed() {
     onFormTransferAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formTransferAmount: +e.target.value }),
     onFormTransferNote: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formTransferNote: e.target.value }),
     toggleFormTransferIsNisa: () => setState({ formTransferIsNisa: !s.formTransferIsNisa }),
+    formTransferValid: !!s.formTransferName.trim() && (+s.formTransferAmount || 0) > 0,
+    formTransferError: !s.formTransferName.trim() ? '内容を入力してください' : '金額を入力してください',
     addTransfer: () => {
       const amt = +s.formTransferAmount || 0;
       if (!s.formTransferName.trim() || amt <= 0) return;
@@ -631,6 +639,8 @@ export function useComputed() {
     onFormCashAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formCashAmount: +e.target.value }),
     onFormCashNote: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formCashNote: e.target.value }),
     onFormCashDate: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formCashDate: e.target.value }),
+    formCashValid: !!s.formCashName.trim() && (+s.formCashAmount || 0) > 0,
+    formCashError: !s.formCashName.trim() ? '内容を入力してください' : '金額を入力してください',
     addCash: () => {
       const amt = +s.formCashAmount || 0;
       if (!s.formCashName.trim() || amt <= 0) return;
@@ -670,6 +680,8 @@ export function useComputed() {
     onFormRecurringCashName: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formRecurringCashName: e.target.value }),
     onFormRecurringCashAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formRecurringCashAmount: +e.target.value }),
     onFormRecurringCashNote: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formRecurringCashNote: e.target.value }),
+    formRecurringCashValid: !!s.formRecurringCashName.trim() && (+s.formRecurringCashAmount || 0) > 0,
+    formRecurringCashError: !s.formRecurringCashName.trim() ? '内容を入力してください' : '金額を入力してください',
     addRecurringCash: () => {
       const amt = +s.formRecurringCashAmount || 0;
       if (!s.formRecurringCashName.trim() || amt <= 0) return;

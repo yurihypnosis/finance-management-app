@@ -1,5 +1,5 @@
 import type { Computed } from '../hooks/useComputed';
-import { ConfirmDelete, ListRow, NumberField, SegTabs } from '../components/common';
+import { ConfirmDelete, FormActions, ListRow, NumberField, SegTabs, submitOnEnter } from '../components/common';
 
 export function Habit({ v }: { v: Computed }) {
   let body;
@@ -50,22 +50,19 @@ export function Habit({ v }: { v: Computed }) {
           <div style={{ padding: '16px 0', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
             <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>習慣を登録</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input className="field-input" value={v.formName} placeholder="例: スタバ" onChange={v.onFormName} />
+              <input className="field-input" value={v.formName} placeholder="例: スタバ" autoFocus onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormName} />
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <span className="field-label">週に何回</span>
-                  <input className="field-input" type="number" value={v.formTimes} min={1} max={21} onChange={v.onFormTimes} />
+                  <input className="field-input" type="number" value={v.formTimes} min={1} max={21} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormTimes} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <span className="field-label">1回あたり（円）</span>
-                  <input className="field-input" type="number" value={v.formAmount} min={0} step={100} onChange={v.onFormAmount} />
+                  <input className="field-input" type="number" value={v.formAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormAmount} />
                 </div>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--muted)' }}>月換算 <span style={{ color: 'var(--fg)' }}>{v.formMonthFmt}円</span> / 年換算 <span style={{ color: 'var(--amber)' }}>{v.formYearFmt}円</span></div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div className="btn-primary" onClick={v.addHabit}>登録する</div>
-                <div className="btn-cancel" onClick={v.closeAdd}>やめる</div>
-              </div>
+              <FormActions valid={v.formHabitValid} errorMessage={v.formHabitError} onSubmit={v.addHabit} onCancel={v.closeAdd} />
             </div>
           </div>
         )}
