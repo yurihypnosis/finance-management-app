@@ -68,6 +68,16 @@ a { color: var(--primary2); text-decoration: none; }
   backdrop-filter: blur(18px);
 }
 
+/* renderTopbar() renders its own wrapper div (class="topbar") inside #topbar;
+   without this it has no layout and the menu button/title stack vertically
+   instead of sitting at opposite ends of the bar. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .topbar-title {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 13px;
