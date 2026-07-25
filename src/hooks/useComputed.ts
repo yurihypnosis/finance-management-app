@@ -4,6 +4,8 @@ import {
   RATES, SYM, COACH_ON, fmt, mean, stdev, Z80, subMonthly, subAnnual, tax, bonusTax,
 } from '../lib/calc';
 import type { AppState } from '../lib/types';
+import { categoryColor } from '../lib/colors';
+import { fmtMan } from '../lib/format';
 
 /**
  * Single computed-values hook mirroring the original vanilla computeVals().
@@ -62,14 +64,14 @@ export function useComputed() {
   function setBudgetName(catId: string, val: string) {
     setState((st) => ({ budgetCategories: st.budgetCategories.map((c) => (c.id === catId ? { ...c, name: val } : c)) }));
   }
-  const budgetRows = s.budgetCategories.map((b) => {
+  const budgetRows = s.budgetCategories.map((b, i) => {
     const used = monthActuals[b.id] || 0;
     const r = used / b.cap;
     return {
       id: b.id, name: b.name, used, cap: b.cap, usedFmt: fmt(used), capFmt: fmt(b.cap),
-      pct: Math.min(100, r * 100) + '%', pctLabel: Math.round(r * 100) + '%',
-      color: r > 1 ? 'var(--red)' : r > 0.85 ? 'var(--amber)' : 'var(--green)',
-      gap: used - b.cap,
+      ratio: r, pctLabel: Math.round(r * 100) + '%',
+      chipColor: categoryColor(b.id, i),
+      gap: used - b.cap, gapFmt: fmt(used - b.cap),
       onUsedChange: (e: React.ChangeEvent<HTMLInputElement>) => setBudgetActual(b.id, Math.max(0, +e.target.value || 0)),
       onCapChange: (e: React.ChangeEvent<HTMLInputElement>) => setBudgetCap(b.id, Math.max(1, +e.target.value || 0)),
       onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => setBudgetName(b.id, e.target.value),
@@ -98,6 +100,11 @@ export function useComputed() {
   }));
   const overCount = overCategories.length;
   const overTotalFmt = fmt(overCategories.reduce((a, o) => a + o.gap, 0));
+  const budgetTotalUsed = budgetRows.reduce((a, b) => a + b.used, 0);
+  const budgetTotalCap = budgetRows.reduce((a, b) => a + b.cap, 0);
+  const budgetTotalRatio = budgetTotalCap > 0 ? budgetTotalUsed / budgetTotalCap : 0;
+  const budgetTotalUsedFmt = fmt(budgetTotalUsed);
+  const budgetTotalCapFmt = fmt(budgetTotalCap);
 
   const monthTransfers = s.transfersByMonth[vm] || [];
   const transferTotal = monthTransfers.reduce((a, tr) => a + tr.amount, 0);
@@ -161,11 +168,13 @@ export function useComputed() {
   const savingsGoalPct = Math.min(100, Math.max(0, (surplus / Math.max(1, savingsGoal)) * 100)) + '%';
   const savingsGoalMsg = savingsGoalGap > 0 ? '目標まであと ' + fmt(savingsGoalGap) + '円' : '目標を ' + fmt(-savingsGoalGap) + '円 上回っています';
   const savingsGoalColor = savingsGoalGap > 0 ? 'var(--amber)' : 'var(--green)';
+  const savingsGoalRatio = Math.max(0, surplus / Math.max(1, savingsGoal));
 
   const spendGoal = s.spendGoal;
   const spendGoalGap = realSpend - spendGoal;
   const spendGoalOver = spendGoalGap > 0;
   const spendGoalPct = Math.min(100, (realSpend / spendGoal) * 100) + '%';
+  const spendGoalRatio = realSpend / Math.max(1, spendGoal);
   const spendGoalMsg = spendGoalOver ? '目標より ' + fmt(spendGoalGap) + '円 超過' : 'あと ' + fmt(-spendGoalGap) + '円 の余裕';
   const spendGoalColor = spendGoalOver ? 'var(--red)' : 'var(--green)';
 
@@ -181,6 +190,7 @@ export function useComputed() {
     onName: (e: React.ChangeEvent<HTMLInputElement>) => setTransferField(tr.id, { name: e.target.value }),
     onAmount: (e: React.ChangeEvent<HTMLInputElement>) => setTransferField(tr.id, { amount: Math.max(0, +e.target.value || 0) }),
     onNote: (e: React.ChangeEvent<HTMLInputElement>) => setTransferField(tr.id, { note: e.target.value }),
+    toggleNisa: () => setTransferField(tr.id, { taxAdvantaged: !tr.taxAdvantaged }),
     remove: () => {
       setState((st) => {
         const tbm = { ...st.transfersByMonth };
@@ -193,13 +203,16 @@ export function useComputed() {
   const noneSubs = s.subs.filter((x) => x.usage === 'none');
   const lowSubs = s.subs.filter((x) => x.usage === 'low');
   const lowSubTotal = noneSubs.concat(lowSubs).reduce((a, x) => a + subMonthly(x), 0);
+  /* ヒーロー「見直しで浮くお金」= OFF習慣の節約額 + 未活用サブスクの月換算合計。
+     既存の habitSave / lowSubTotal をそのまま合算するだけで、計算式自体は変えない。 */
+  const reliefTotal = habitSave + lowSubTotal;
 
-  function subCycleNote(x: AppState['subs'][number]) { return x.cycle === 'annual' ? '年' + fmt(x.price) + '円（年払い）' : '月' + fmt(x.price) + '円'; }
+  function subCycleNote(x: AppState['subs'][number]) { return x.cycle === 'annual' ? '年' + fmt(x.price) + '円（年払い）' : fmt(x.price) + '円/月'; }
   const cutDefs = ([] as { id: string; label: string; note: string; save: number }[])
     .concat(noneSubs.map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を解約（未使用）', note: '全く使っていないサービス・' + subCycleNote(x), save: subMonthly(x) })))
     .concat(lowSubs.map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を解約', note: '活用度: ほぼ無し・' + subCycleNote(x), save: subMonthly(x) })))
     .concat(s.subs.filter((x) => x.usage === 'mid').map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を一時停止', note: '活用度: 低・利用月のみの契約も検討', save: subMonthly(x) })))
-    .concat(habitDefs.filter((hb) => !s.habitsOff[hb.id]).map((hb) => ({ id: 'habit-' + hb.id, label: hb.name + ' を減らす', note: hb.freq + '・月' + fmt(hb.month) + '円', save: Math.round(hb.month * 0.3) })));
+    .concat(habitDefs.filter((hb) => !s.habitsOff[hb.id]).map((hb) => ({ id: 'habit-' + hb.id, label: hb.name + ' を減らす', note: hb.freq + '・' + fmt(hb.month) + '円/月', save: Math.round(hb.month * 0.3) })));
 
   const cutsTotal = cutDefs.reduce((a, c) => a + (s.cuts[c.id] ? c.save : 0), 0);
   const gap = s.invTarget - surplus - cutsTotal;
@@ -207,7 +220,7 @@ export function useComputed() {
   const cutRows = cutDefs.map((c) => {
     const on = !!s.cuts[c.id];
     return {
-      id: c.id, label: c.label, note: c.note, saveFmt: fmt(c.save), on,
+      id: c.id, label: c.label, note: c.note, save: c.save, saveFmt: fmt(c.save), on,
       toggle: () => setState((st) => { const cuts = { ...st.cuts }; cuts[c.id] = !cuts[c.id]; return { cuts }; }),
     };
   });
@@ -228,8 +241,6 @@ export function useComputed() {
     };
   });
 
-  const fixed = s.expTab === 'fixed';
-
   function setEvent(idx: number, patch: Partial<AppState['events'][number]>) {
     setState((st) => ({ events: st.events.map((e, i) => (i === idx ? { ...e, ...patch } : e)) }));
   }
@@ -240,21 +251,22 @@ export function useComputed() {
     const rate = RATES[ev.currency] || 1;
     const jpy = (n: number) => Math.round(n * rate);
     const isFx = ev.currency !== 'JPY';
+    const manFmt = (n: number, digits: number) => (n / 10000).toFixed(digits) + '万円';
+    const ratio = ev.target > 0 ? ev.saved / ev.target : 0;
     return {
-      name: ev.name, when: ev.when, currency: ev.currency, targetRaw: ev.target, savedRaw: ev.saved, monthlyRaw: ev.monthly,
+      idx, name: ev.name, when: ev.when, currency: ev.currency, targetRaw: ev.target, savedRaw: ev.saved, monthlyRaw: ev.monthly,
       onName: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { name: e.target.value }),
       onWhen: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { when: e.target.value }),
       onSaved: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { saved: Math.max(0, +e.target.value || 0) }),
       onTarget: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { target: Math.max(1, +e.target.value || 0) }),
       onMonthly: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { monthly: Math.max(0, +e.target.value || 0) }),
       remove: () => removeEvent(idx),
-      progress: isFx
-        ? SYM[ev.currency] + fmt(ev.saved) + ' / ' + SYM[ev.currency] + fmt(ev.target)
-        : (ev.saved / 10000).toFixed(1) + ' / ' + (ev.target / 10000).toFixed(0) + '万',
-      monthly: isFx ? SYM[ev.currency] + fmt(ev.monthly) : (ev.monthly / 10000).toFixed(1) + '万',
-      pct: Math.min(100, (ev.saved / ev.target) * 100) + '%',
+      savedFmt: isFx ? SYM[ev.currency] + fmt(ev.saved) : manFmt(ev.saved, 1),
+      targetFmt: isFx ? SYM[ev.currency] + fmt(ev.target) : manFmt(ev.target, 0),
+      monthlyFmt: isFx ? SYM[ev.currency] + fmt(ev.monthly) : manFmt(ev.monthly, 1),
+      ratio,
       fxNote: isFx ? '自動円換算: 目標 ≒ ' + fmt(jpy(ev.target)) + '円・月 ≒ ' + fmt(jpy(ev.monthly)) + '円（1 ' + ev.currency + ' = ' + rate.toFixed(1) + '円）' : '',
-      barColor: isFx ? 'var(--muted2)' : 'var(--primary)',
+      barColor: ratio >= 1 ? 'var(--color-positive)' : 'var(--color-accent)',
     };
   });
   const eventMonthlyTotal = s.events.reduce((a, ev) => a + ev.monthly * (RATES[ev.currency] || 1), 0);
@@ -290,7 +302,7 @@ export function useComputed() {
   const homeFixedPct = Math.min(100, (homeFixedMonthly / homeBase) * 100);
   const homeVariablePct = Math.min(100 - homeFixedPct, (homeVariableMonthly / homeBase) * 100);
   const homeRemainPct = Math.max(0, 100 - homeFixedPct - homeVariablePct);
-  function manYen(n: number) { return (n / 10000).toFixed(1) + '万'; }
+  function manYen(n: number) { return (n / 10000).toFixed(1) + '万円'; }
 
   function categoryDelta(catId: string, used: number) {
     const avg = avgCategoryMonthly(catId);
@@ -307,10 +319,20 @@ export function useComputed() {
     const d = categoryDelta(b.id, used);
     return { name: b.name, note: '目安 ' + fmt(b.cap) + '円', amount: used, delta: d.delta, deltaColor: d.deltaColor };
   }
-  const expenseRows = (fixed ? fixedCats : variableCats).map((b) => {
+  /* Expense「内訳」タブ: 固定費・流動費を1リストにまとめて出すため、グループごとの
+     行データを別々に返す(旧 expenseRows はタブ選択で片方だけを返していた)。
+     カテゴリ色は budgetCategories 内での位置で決まるので、グループが変わっても
+     同じカテゴリは同じ色を保つ。 */
+  const catColor = (b: AppState['budgetCategories'][number]) =>
+    categoryColor(b.id, s.budgetCategories.findIndex((x) => x.id === b.id));
+  function expenseRow(b: AppState['budgetCategories'][number]) {
     const row = categoryRow(b);
-    return { ...row, amountFmt: fmt(row.amount) };
-  });
+    return { ...row, id: b.id, color: catColor(b), amountFmt: fmt(row.amount) };
+  }
+  const expenseFixedRows = fixedCats.map(expenseRow);
+  const expenseVariableRows = variableCats.map(expenseRow);
+  const expenseFixedTotalFmt = fmt(fixedCats.reduce((a, b) => a + (monthActuals[b.id] || 0), 0));
+  const expenseVariableTotalFmt = fmt(variableCats.reduce((a, b) => a + (monthActuals[b.id] || 0), 0));
 
   const recordedCashMonths = Object.keys(s.cashExpensesByMonth);
   const cashMonthlyTotals = recordedCashMonths.map((mk) => (s.cashExpensesByMonth[mk] || []).reduce((a, c) => a + c.amount, 0));
@@ -333,7 +355,17 @@ export function useComputed() {
   const annualTotal = annualFixed + annualSubs + annualHabits + annualVariable + annualCash + annualEvents;
   const annualNet = t.net * 12 + bonusAnnualNet;
   const annualGap = annualNet - annualTotal;
-  const annualRows = annualBreakdown.map((r) => ({ name: r.name, note: r.note, monthlyFmt: fmt(r.monthly), annualFmt: fmt(r.annual), pct: Math.min(100, (r.annual / annualTotal) * 100) + '%' }));
+  const annualRows = annualBreakdown
+    .map((r, i) => ({
+      name: r.name, note: r.note,
+      monthlyFmt: fmt(r.monthly), annualFmt: fmt(r.annual),
+      monthlyManFmt: fmtMan(r.monthly), annualManFmt: fmtMan(r.annual),
+      color: categoryColor(r.key, i),
+      pctLabel: annualTotal > 0 ? Math.round((r.annual / annualTotal) * 100) + '%' : '0%',
+      pct: Math.min(100, annualTotal > 0 ? (r.annual / annualTotal) * 100 : 0) + '%',
+      annual: r.annual,
+    }))
+    .sort((a, b) => b.annual - a.annual);
 
   /* ---- statistical annual expense forecast (mean ± confidence interval) ---- */
   const categoryStats = variableCats.map((b) => {
@@ -368,16 +400,21 @@ export function useComputed() {
   const monthlyTotals = allRecordedMonths.map((mk) => ({ mk, total: monthTotalSpend(mk) }));
   const monthlyTotalsMax = monthlyTotals.reduce((a, m) => Math.max(a, m.total), 0);
   const reportTrendRows = monthlyTotals.map((m) => ({
-    label: monthLabel(m.mk).replace(/^\d+年/, ''), totalFmt: fmt(m.total),
+    mk: m.mk, label: monthLabel(m.mk).replace(/^\d+年/, ''), total: m.total, totalFmt: fmt(m.total),
     pct: monthlyTotalsMax > 0 ? Math.max(2, Math.round((m.total / monthlyTotalsMax) * 100)) + '%' : '2%',
     isCurrent: m.mk === vm,
   }));
+  /** BarChart のタップ選択 → その月に viewMonth を切り替える(月移動と同じ setState パターン)。 */
+  const selectReportMonth = (mk: string) => setState({ viewMonth: mk });
 
-  /* ---- report: current-month category breakdown, ranked ---- */
-  const breakdownItems = budgetRows.map((b) => ({ name: b.name, used: b.used })).concat(cashTotal > 0 ? [{ name: '現金支出', used: cashTotal }] : []);
+  /* ---- report: current-month category breakdown, ranked ----
+     色はカテゴリのチップ色(budgetRows と同じ位置ベース)を引き継ぎ、予算画面と一致させる。
+     上位N件+「その他」への集約は呼び出し側(Report画面)の表示ロジックに任せる。 */
+  const breakdownItems = budgetRows.map((b) => ({ name: b.name, used: b.used, color: b.chipColor }))
+    .concat(cashTotal > 0 ? [{ name: '現金支出', used: cashTotal, color: 'var(--muted)' }] : []);
   const breakdownTotal = breakdownItems.reduce((a, b) => a + b.used, 0);
   const breakdownRows = breakdownItems.filter((b) => b.used > 0).sort((a, b) => b.used - a.used).map((b, i) => ({
-    rank: i + 1, name: b.name, usedFmt: fmt(b.used),
+    rank: i + 1, name: b.name, used: b.used, usedFmt: fmt(b.used), color: b.color,
     pctLabel: breakdownTotal > 0 ? Math.round((b.used / breakdownTotal) * 100) + '%' : '0%',
     pct: breakdownTotal > 0 ? Math.max(1, (b.used / breakdownTotal) * 100) + '%' : '1%',
   }));
@@ -397,8 +434,12 @@ export function useComputed() {
       avgFmt: fmt(avg), minFmt: fmt(Math.min(...vals)), maxFmt: fmt(Math.max(...vals)), sdFmt: fmt(stdev(vals)),
       diffFmt: diff === null ? null : (diff >= 0 ? '+' : '') + fmt(diff) + '円',
       diffColor: diff === null ? 'var(--muted2)' : diff > 0 ? 'var(--red)' : diff < 0 ? 'var(--green)' : 'var(--muted2)',
+      /* 「気になる動き」インサイトの並べ替え用(絶対値順)。diff が null の行は -1 で最後に沈める。 */
+      diffAbs: diff === null ? -1 : Math.abs(diff),
     };
   }).filter((x): x is NonNullable<typeof x> => x !== null).sort((a, b) => b.n - a.n);
+  /* ---- report: 統計の平易化 — 初期表示は差分の大きい上位数件だけの1行インサイトにする ---- */
+  const statsInsightRows = [...statsRows].filter((c) => c.diffAbs > 0).sort((a, b) => b.diffAbs - a.diffAbs).slice(0, 3);
 
   /* ---- report: month-over-month comparison ---- */
   const prevMonthKey = shiftMonthKey(vm, -1);
@@ -409,11 +450,12 @@ export function useComputed() {
   const curTotal = monthTotalSpend(vm);
   const momDiff = curTotal - prevTotal;
   const momPct = prevTotal > 0 ? Math.round((momDiff / prevTotal) * 100) : null;
+  /* 絶対値順のフルリスト。上位3件だけ見せて残りは「すべて見る」に回すのは呼び出し側(Report画面)の仕事。 */
   const momCategoryRows = s.budgetCategories.map((b) => {
     const cur = monthActuals[b.id] || 0;
     const prev = (prevActuals || {})[b.id] || 0;
     return { name: b.name, diff: cur - prev };
-  }).filter((r) => r.diff !== 0).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 4).map((r) => ({
+  }).filter((r) => r.diff !== 0).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).map((r) => ({
     name: r.name, diffFmt: (r.diff >= 0 ? '+' : '') + fmt(r.diff) + '円', color: r.diff > 0 ? 'var(--red)' : 'var(--green)',
   }));
 
@@ -425,6 +467,14 @@ export function useComputed() {
   } : null;
 
   const usageColors: Record<string, string> = { high: 'var(--green)', mid: 'var(--amber)', low: 'var(--red)', none: 'var(--red)' };
+  /* 活用度バッジ: 高=positive/中=neutral/低=warning/未使用=danger（habit.md のビジュアル方針）。
+     並び順は低活用ほど上（none→low→mid→high）に出すための rank も併せて持たせる。 */
+  const usageBadge: Record<AppState['subs'][number]['usage'], { label: string; tone: 'positive' | 'warning' | 'danger' | 'neutral'; rank: number }> = {
+    none: { label: '未使用', tone: 'danger', rank: 0 },
+    low: { label: '低活用', tone: 'warning', rank: 1 },
+    mid: { label: '中活用', tone: 'neutral', rank: 2 },
+    high: { label: '高活用', tone: 'positive', rank: 3 },
+  };
   function setUsage(id: string, usage: AppState['subs'][number]['usage']) {
     return () => setState((st) => ({ subs: st.subs.map((x) => (x.id === id ? { ...x, usage } : x)) }));
   }
@@ -433,13 +483,17 @@ export function useComputed() {
   }
   const subRows = s.subs.map((sub) => {
     const annual = subAnnual(sub);
+    const badge = usageBadge[sub.usage];
     return {
       id: sub.id, name: sub.name, usage: sub.usage,
       priceFmt: fmt(sub.price), priceUnit: sub.cycle === 'annual' ? '円/年' : '円/月',
+      monthlyFmt: fmt(subMonthly(sub)),
       isAnnual: sub.cycle === 'annual', isMonthly: sub.cycle !== 'annual',
       setMonthlyCycle: setCycle(sub.id, 'monthly'), setAnnualCycle: setCycle(sub.id, 'annual'),
       setHigh: setUsage(sub.id, 'high'), setMid: setUsage(sub.id, 'mid'), setLow: setUsage(sub.id, 'low'), setNone: setUsage(sub.id, 'none'),
       highOn: sub.usage === 'high', midOn: sub.usage === 'mid', lowOn: sub.usage === 'low', noneOn: sub.usage === 'none',
+      usageLabel: badge.label, usageTone: badge.tone, usageRank: badge.rank,
+      cancelCandidate: sub.usage === 'low' || sub.usage === 'none',
       advice: sub.usage === 'none' ? '全く使用なし。即解約で年 ' + fmt(annual) + '円の削減'
         : sub.usage === 'low' ? '解約候補・年 ' + fmt(annual) + '円の削減余地'
         : sub.usage === 'mid' ? '利用月のみ契約する運用も検討の余地'
@@ -459,7 +513,18 @@ export function useComputed() {
     active: s.screen === tb.id || (tb.id === 'salary' && s.screen === 'salarySettings'),
   }));
 
-  const ft = { active: s.expTab === 'fixed' }, vt = { active: s.expTab === 'variable' }, trTab = { active: s.expTab === 'transfer' }, cashTab = { active: s.expTab === 'cash' };
+  /* 支出画面のタブは2つ(内訳 / 現金・その他)に集約したが、AppState.expTab は保存済み
+     データとの互換のため 'fixed'|'variable'|'transfer'|'cash' の4値のまま維持する。
+     UI 側で fixed/variable→内訳、transfer/cash→現金・その他 にマップする。 */
+  const isBreakdownTab = s.expTab === 'fixed' || s.expTab === 'variable';
+  const isCashOtherTab = !isBreakdownTab;
+
+  /* カード明細の生の請求額から着地予測を作るための調整分。常時表示せず InfoTip に退避する。 */
+  const adjustParts: string[] = [];
+  if (transferTotal !== 0) adjustParts.push('資金移動 -' + fmt(transferTotal) + '円を除いています');
+  if (cashTotal !== 0) adjustParts.push('現金支出 +' + fmt(cashTotal) + '円を加えています');
+  const expenseAdjustNote = 'カード請求額 ' + fmt(rawSpend) + '円に対して'
+    + (adjustParts.length > 0 ? '、' + adjustParts.join('。') + '。' : '調整はありません。');
 
   const furusatoLimit = Math.round((s.gross * 12 * 0.012) / 1000) * 1000;
   const furusatoGiftValue = Math.round(furusatoLimit * 0.3);
@@ -487,24 +552,32 @@ export function useComputed() {
     isAnnual: s.screen === 'annual', isSalarySettings: s.screen === 'salarySettings',
     isGoalSettings: s.screen === 'goalSettings', isReport: s.screen === 'report',
     goReport: go('report'),
-    reportTrendRows,
-    breakdownRows, breakdownTotalFmt: fmt(breakdownTotal),
-    statsRows,
+    reportTrendRows, selectReportMonth,
+    breakdownRows, breakdownTotal, breakdownTotalFmt: fmt(breakdownTotal),
+    statsRows, statsInsightRows,
     momAvailable, momDiffFmt: (momDiff >= 0 ? '+' : '') + fmt(momDiff) + '円', momPct,
     momColor: momDiff > 0 ? 'var(--red)' : momDiff < 0 ? 'var(--green)' : 'var(--muted2)',
     prevMonthLabel: monthLabel(prevMonthKey), momCategoryRows,
     cashStatsAvailable, cashStats,
     annualRows, annualTotalFmt: fmt(annualTotal), annualNetFmt: fmt(annualNet),
+    annualTotalManFmt: fmtMan(annualTotal),
     annualGapColor: annualGap >= 0 ? 'var(--green)' : 'var(--red)',
     annualGapMsg: annualGap >= 0 ? '年間で ' + fmt(annualGap) + '円 残る見込み' : '年間で ' + fmt(-annualGap) + '円 不足する見込み',
     annualPct: Math.round(Math.min(100, (annualTotal / annualNet) * 100)) + '%',
+    annualRatio: annualNet > 0 ? annualTotal / annualNet : 0,
+    annualHeroLine:
+      '手取りの' + Math.round((annualTotal / Math.max(annualNet, 1)) * 100) + '%・' +
+      (annualGap >= 0 ? '残り' + fmtMan(annualGap) : fmtMan(-annualGap) + '超過'),
     annualBasedNote: variableBasedOnActuals ? '記録済みの予算実績をもとに算出しています' : 'まだ実績記録がないため、予算目標をもとに算出しています。予算画面で記録するほど精度が上がります',
     forecastReliable, forecastSampleMonths,
     forecastLowFmt: fmt(forecastLow), forecastHighFmt: fmt(forecastHigh), annualStdFmt: fmt(annualStd),
+    annualForecastLine: 'ブレを見込むと ' + fmtMan(forecastLow) + ' 〜 ' + fmtMan(forecastHigh),
     forecastCategoryRows,
     homeFixedPct: homeFixedPct + '%', homeVariablePct: homeVariablePct + '%', homeRemainPct: homeRemainPct + '%',
     homeFixedLabel: '固定費 ' + manYen(homeFixedMonthly), homeVariableLabel: '流動費 ' + manYen(homeVariableMonthly),
+    homeFixedMonthly, homeVariableMonthly, homeNet: homeBase,
     coachOn: COACH_ON,
+    coachBad: lowSubTotal > 0,
     coachMsg: lowSubTotal > 0
       ? '未活用のサービスが' + (noneSubs.length + lowSubs.length) + '件（月' + fmt(lowSubTotal) + '円）。解約により投資余力を改善できます'
       : '契約サービスはすべて活用されています',
@@ -512,6 +585,7 @@ export function useComputed() {
     setHabitTab: () => setState({ habitTab: 'habit' }), setSubTab: () => setState({ habitTab: 'sub' }),
     subCount: s.subs.length, subRows, lowSubTotalFmt: fmt(lowSubTotal),
     subSummaryMsg: lowSubTotal > 0 ? '年間 ' + fmt(lowSubTotal * 12) + '円。投資タブの削減プランへ解約候補として反映済み' : '解約候補はありません',
+    reliefTotalFmt: fmt(reliefTotal),
     addOpen: s.addOpen, openAdd: () => setState({ addOpen: true }), closeAdd: () => setState({ addOpen: false }),
     formName: s.formName, formTimes: s.formTimes, formAmount: s.formAmount,
     onFormName: (e: React.ChangeEvent<HTMLInputElement>) => setState({ formName: e.target.value }),
@@ -557,8 +631,10 @@ export function useComputed() {
     investGapManFmt: Math.max(0, gap / 10000).toFixed(1),
     tabs,
     menuOpen: s.menuOpen, toggleMenu: () => setState({ menuOpen: !s.menuOpen }), closeMenu: () => setState({ menuOpen: false }),
-    expenseRows, habitRows, budgetRows, cutRows, overRows, eventRows,
+    expenseFixedRows, expenseVariableRows, expenseFixedTotalFmt, expenseVariableTotalFmt,
+    habitRows, budgetRows, cutRows, overRows, eventRows,
     overCount, overTotalFmt,
+    budgetTotalRatio, budgetTotalUsedFmt, budgetTotalCapFmt,
     habitSaveFmt: fmt(habitSave),
     addCategoryOpen: s.addCategoryOpen,
     openAddCategory: () => setState({ addCategoryOpen: true }), closeAddCategory: () => setState({ addCategoryOpen: false }),
@@ -577,11 +653,13 @@ export function useComputed() {
     canGoNext, isCurrentMonth: vm === currentRealMonth,
     isBudgetTab: s.budgetTab === 'budget', isLifeEventTab: s.budgetTab === 'lifeEvent',
     setBudgetTab: () => setState({ budgetTab: 'budget' }), setLifeEventTab: () => setState({ budgetTab: 'lifeEvent' }),
-    setFixed: () => setState({ expTab: 'fixed' }), setVariable: () => setState({ expTab: 'variable' }),
-    setTransferTab: () => setState({ expTab: 'transfer' }),
-    fixedTab: ft, varTab: vt, transferTab: trTab,
+    /* 支出タブは UI 上は2つ。expTab の4値のうち fixed/cash を代表値として書き込む。 */
+    isBreakdownTab, isCashOtherTab,
+    setBreakdownTab: () => setState({ expTab: 'fixed' }),
+    setCashOtherTab: () => setState({ expTab: 'cash' }),
+    expenseAdjustNote,
     rawSpendFmt: fmt(rawSpend), realSpendFmt: fmt(realSpend), usedRealFmt: fmt(usedReal),
-    savingsGoal, savingsGoalFmt: fmt(savingsGoal), savingsGoalPct, savingsGoalMsg, savingsGoalColor,
+    savingsGoal, savingsGoalFmt: fmt(savingsGoal), savingsGoalPct, savingsGoalRatio, savingsGoalMsg, savingsGoalColor,
     onSavingsGoal: (e: React.ChangeEvent<HTMLInputElement>) => setState({ savingsGoal: +e.target.value }),
     previewSavingsGoal: (goalVal: number) => {
       const g = goalVal - surplus;
@@ -592,7 +670,7 @@ export function useComputed() {
         color: g > 0 ? 'var(--amber)' : 'var(--green)',
       };
     },
-    spendGoal, spendGoalFmt: fmt(spendGoal), spendGoalPct, spendGoalMsg, spendGoalColor,
+    spendGoal, spendGoalFmt: fmt(spendGoal), spendGoalPct, spendGoalRatio, spendGoalMsg, spendGoalColor,
     onSpendGoal: (e: React.ChangeEvent<HTMLInputElement>) => setState({ spendGoal: +e.target.value }),
     previewSpendGoal: (goalVal: number) => {
       const over = realSpend > goalVal;
@@ -629,8 +707,6 @@ export function useComputed() {
         return { transfersByMonth: tbm, addTransferOpen: false, formTransferName: '', formTransferNote: '', formTransferIsNisa: false };
       });
     },
-    setCashTab: () => setState({ expTab: 'cash' }),
-    cashTab,
     cashRows, cashCount: monthCash.length, cashTotalFmt: fmt(cashTotal),
     addCashOpen: s.addCashOpen,
     openAddCash: () => setState({ addCashOpen: true, formCashDate: isoDate(new Date()) }), closeAddCash: () => setState({ addCashOpen: false }),
@@ -655,7 +731,7 @@ export function useComputed() {
         return { cashExpensesByMonth: cbm, addCashOpen: false, formCashName: '', formCashNote: '' };
       });
     },
-    cashRecurringRows, pendingRecurringCount: pendingRecurring.length,
+    cashRecurringRows, cashRecurringCount: s.cashRecurring.length, pendingRecurringCount: pendingRecurring.length,
     registerAllRecurring: () => {
       setState((st) => {
         const cbm = { ...st.cashExpensesByMonth };
@@ -693,7 +769,8 @@ export function useComputed() {
     },
     invTarget: s.invTarget, invTargetFmt: fmt(s.invTarget),
     onInvTarget: (e: React.ChangeEvent<HTMLInputElement>) => setState({ invTarget: +e.target.value }),
-    cutsTotalFmt: fmt(cutsTotal),
+    surplus, cutsTotal, cutsTotalFmt: fmt(cutsTotal),
+    investGap: gap,
     gapColor: gap > 0 ? 'var(--red)' : 'var(--green)',
     gapLabel: gap > 0 ? fmt(gap) + '円' : '達成',
     investPct: Math.min(100, Math.max(0, ((surplus + cutsTotal) / s.invTarget) * 100)) + '%',
@@ -714,15 +791,21 @@ export function useComputed() {
     },
     gross: s.gross, grossFmt: fmt(s.gross),
     onGross: (e: React.ChangeEvent<HTMLInputElement>) => setState({ gross: +e.target.value }),
+    net: t.net,
+    /** 控除内訳の生の数値（StackedBar のセグメント値用。表示はそれぞれの `*Fmt` を使う）。 */
+    kenko: t.kenko, kosei: t.kousei, koyou: t.koyou, shotoku: t.shotoku, jumin: t.jumin,
     shakaiFmt: fmt(t.shakai), shotokuFmt: fmt(t.shotoku), juminFmt: fmt(t.jumin),
     kenkoFmt: fmt(t.kenko), koseiFmt: fmt(t.kousei), koyouFmt: fmt(t.koyou),
     shakaiPct: (t.shakai / s.gross) * 100 + '%', shotokuPct: (t.shotoku / s.gross) * 100 + '%', juminPct: (t.jumin / s.gross) * 100 + '%',
     kenkoPct: (t.kenko / s.gross) * 100 + '%', koseiPct: (t.kousei / s.gross) * 100 + '%', koyouPct: (t.koyou / s.gross) * 100 + '%',
+    /** 額面から手取りへの控除合計（ヒーローの「額面◯円から −◯円」用）。 */
+    deductionTotalFmt: fmt(s.gross - t.net),
     furusatoFmt: fmt(furusatoLimit), furusatoGiftValueFmt: fmt(furusatoGiftValue),
     idecoAnnualFmt: fmt(idecoAnnual), idecoFmt: fmt(idecoSaving),
     medicalPaidFmt: fmt(medicalPaid), medicalThresholdFmt: fmt(medicalThreshold), medicalGapFmt: fmt(medicalGap),
     medicalSavingFmt: fmt(medicalSaving), medicalOverThreshold,
     medicalPct: Math.min(100, (medicalPaid / medicalThreshold) * 100) + '%',
+    nisaYearTotal, nisaLimitAnnual, medicalPaid, medicalThreshold,
     nisaYearTotalFmt: fmt(nisaYearTotal), nisaLimitFmt: fmt(nisaLimitAnnual), nisaRemainingFmt: fmt(nisaRemaining), nisaPct,
     dedTotalFmt: fmt(dedTotal),
     bonusRows, bonusAnnualNetFmt: fmt(bonusAnnualNet), monthBonusNetFmt: fmt(monthBonusNet), monthBonusNet,

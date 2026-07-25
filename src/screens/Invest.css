@@ -1,0 +1,75 @@
+/* Invest screen — ヒーロー: 目標達成度（積み上げバー）+ 削減プラン一覧（チェック→バー連動） */
+
+.ivt-bar {
+  margin-top: var(--space-4);
+}
+
+.ivt-legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+.ivt-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ivt-gap {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  margin-top: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.ivt-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.ivt-row-label {
+  color: var(--muted);
+}
+.ivt-row-plus {
+  color: var(--color-positive);
+}
+.ivt-row-total {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+.ivt-hint {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin: -6px 0 var(--space-2) 0;
+}
+
+/* ---- 削減プラン一覧: 24px+ のチェックボックス、行全体タップ ---- */
+.ivt-check-box {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-top: 1px;
+}
+.ivt-check-box.ivt-check-box-on {
+  border-color: var(--color-positive);
+  background: var(--color-positive);
+}
+.ivt-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.ivt-row-save {
+  font-size: var(--text-sm);
+  color: var(--color-positive);
+  flex-shrink: 0;
+  white-space: nowrap;
+}

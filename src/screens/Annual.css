@@ -1,0 +1,121 @@
+/* Annual screen — 単一ヒーロー（見込み+手取り比+予測レンジ）+ 内訳の構成比バー付きリスト */
+
+/* ---- ヒーロー: 年間の支出見込み ---- */
+.ann-hero-meter {
+  margin-top: var(--space-4);
+}
+.ann-hero-line {
+  font-size: var(--text-xs);
+  margin-top: var(--space-3);
+}
+.ann-hero-forecast {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: var(--space-2);
+}
+.ann-hero-note {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: var(--space-3);
+}
+
+.ann-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  min-height: 44px;
+  padding: 12px 0;
+}
+
+/* ---- 内訳: 構成比バー付き行 ---- */
+.ann-row {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s;
+  min-height: 44px;
+}
+.ann-row:last-child {
+  border-bottom: none;
+}
+.ann-row:active {
+  background: var(--card2);
+}
+.ann-row-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  min-width: 0;
+}
+.ann-row-fig {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  flex-shrink: 0;
+}
+.ann-row-meter {
+  margin-top: var(--space-2);
+}
+
+/* ---- 内訳行の詳細シート ---- */
+.ann-row-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ann-row-detail-figures {
+  display: flex;
+  gap: var(--space-6);
+}
+.ann-figlabel {
+  color: var(--muted2);
+  font-size: var(--text-xs);
+}
+.ann-row-detail-value {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-1);
+}
+
+/* ---- 計算の詳細シート ---- */
+.ann-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.ann-heading {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: .08em;
+  margin-bottom: var(--space-3);
+}
+.ann-detail-range {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-1);
+}
+.ann-detail-catlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.ann-detail-catrow {
+  font-size: var(--text-xs);
+}
+.ann-detail-catfig {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted2);
+}

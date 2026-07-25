@@ -1,0 +1,70 @@
+/* Goal Settings screen — 3 goal cards (残すお金・支出・投資) with slider + number input */
+
+/* ---- Goal card container ---- */
+.gs-goal-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+/* ---- Goal header: label + large value in tabular-nums ---- */
+.gs-goal-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.gs-goal-label {
+  font-size: var(--text-base);
+  color: var(--fg);
+}
+
+.gs-goal-value {
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.gs-goal-unit {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+/* ---- Slider + NumberField row (slider on left, number input on right) ---- */
+.gs-slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.gs-slider-row input[type='range'] {
+  flex: 1;
+}
+
+/* ---- NumberField styling (shared with salary-settings-numfield pattern) ---- */
+.gs-numfield {
+  flex-shrink: 0;
+  width: 108px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 4px 0;
+}
+
+.gs-numfield:focus {
+  outline: none;
+  border-bottom-color: var(--primary2);
+}
+
+/* ---- Feedback message (1 line below meter bar) ---- */
+.gs-feedback {
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}

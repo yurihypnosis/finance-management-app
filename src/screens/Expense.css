@@ -1,0 +1,251 @@
+/* Expense screen — hero (月末の着地予測) + 2 tabs: 内訳 / 現金・その他 */
+
+/* ---- hero ---- */
+.exp-hero-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* InfoTip の 44px タップ領域が hero 上部の余白を押し広げないよう相殺する */
+  margin: -10px 0 -10px calc(-1 * var(--space-1));
+  padding-left: var(--space-1);
+}
+
+.exp-goal-meter {
+  margin-top: var(--space-4);
+}
+.exp-goal-msg {
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+/* ---- 内訳タブ ---- */
+.exp-group + .exp-group {
+  margin-top: var(--space-6);
+}
+.exp-group-head {
+  margin-bottom: var(--space-2);
+}
+.exp-group-label {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  letter-spacing: .16em;
+}
+.exp-group-total {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.exp-cat {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.exp-cat-text {
+  min-width: 0;
+}
+.exp-cat .color-chip {
+  margin-top: 5px;
+}
+
+.exp-row-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.exp-row-right .row-delta {
+  margin-top: 2px;
+}
+
+.exp-empty {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  padding: var(--space-2) 0;
+}
+
+/* ---- 現金・その他タブ ---- */
+.exp-section + .exp-section {
+  margin-top: var(--space-7);
+}
+
+.exp-section-head {
+  margin-bottom: var(--space-2);
+}
+.exp-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* InfoTip の 44px 高が見出し行を膨らませるのを相殺 */
+  margin: -10px 0;
+}
+.exp-section-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--fg);
+}
+.exp-section-summary {
+  margin-top: var(--space-2);
+}
+.exp-section-summary-label {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+.exp-section-summary-value {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.exp-section-summary-value.is-positive {
+  color: var(--color-positive);
+}
+
+/* 閲覧行 — 行全体が編集シートを開くタップターゲット */
+.exp-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s;
+}
+.exp-entry:last-child {
+  border-bottom: none;
+}
+.exp-entry:active {
+  background: var(--card2);
+}
+.exp-entry-main {
+  min-width: 0;
+}
+.exp-entry-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.exp-entry-badge {
+  font-size: var(--text-xs);
+  color: var(--color-positive);
+  flex-shrink: 0;
+}
+.exp-entry-date {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.exp-add {
+  margin-top: var(--space-4);
+}
+
+/* ---- 繰り返しパターン（折りたたみ・初期閉） ---- */
+.exp-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.exp-collapse-caret {
+  color: var(--muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: transform .15s;
+}
+.exp-collapse-caret.is-open {
+  transform: rotate(90deg);
+}
+.exp-collapse-body {
+  margin-top: var(--space-2);
+}
+.exp-collapse-help {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  line-height: 1.6;
+  margin-bottom: var(--space-3);
+}
+.exp-bulk {
+  font-size: var(--text-xs);
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  min-height: 44px;
+  padding: 12px 0;
+}
+.exp-done {
+  font-size: var(--text-xs);
+  color: var(--color-positive);
+  margin-top: var(--space-1);
+}
+.exp-register-one {
+  font-size: var(--text-xs);
+  margin-top: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 0;
+}
+.exp-row-actions {
+  text-align: right;
+}
+
+/* ---- シート内フォーム ---- */
+.exp-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.exp-form-row {
+  display: flex;
+  gap: var(--space-4);
+}
+.exp-form-col-2 { flex: 2; }
+.exp-form-col-1 { flex: 1; }
+
+.exp-sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.exp-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+.exp-check-box {
+  border-color: var(--border2);
+  background: transparent;
+}
+.exp-check-box[data-on='true'] {
+  border-color: var(--color-positive);
+  background: var(--color-positive);
+}
+.exp-check-label {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.5;
+}

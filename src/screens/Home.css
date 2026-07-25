@@ -1,0 +1,73 @@
+/* Home screen — hero (残せるお金) + goal meter + over-budget alert + shortcut tiles */
+
+.home-breakdown-bar {
+  margin-top: var(--space-2);
+}
+
+.home-breakdown-legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+.home-breakdown-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.home-goal {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.home-goal-label {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  letter-spacing: .08em;
+}
+.home-goal-value {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.home-goal-meter {
+  margin-top: var(--space-2);
+}
+.home-goal-msg {
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.home-coach {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: var(--space-4);
+}
+
+.home-alert-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.home-alert-sub {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: 2px;
+}
+.home-alert-amount {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-tiles {
+  display: flex;
+  gap: var(--space-6);
+  margin-top: var(--space-1);
+}
+.home-tiles > * {
+  flex: 1;
+}

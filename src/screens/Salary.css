@@ -1,0 +1,156 @@
+/* Salary screen — hero (今月の手取り) with StackedBar breakdown + bonus/節税テクニック as tap-in rows */
+
+/* ---- ヒーロー: 手取り + 控除内訳 ---- */
+.salary-hero-sub {
+  font-variant-numeric: tabular-nums;
+}
+.salary-hero-note {
+  margin-top: var(--space-1);
+}
+.salary-breakdown-bar {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.salary-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.salary-breakdown-row {
+  align-items: center;
+}
+.salary-breakdown-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+}
+.salary-breakdown-value {
+  font-variant-numeric: tabular-nums;
+}
+.salary-breakdown-row--net {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-base);
+}
+.salary-breakdown-row--net .salary-breakdown-name {
+  color: var(--color-positive);
+}
+.salary-hero-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* ---- セクション見出し（賞与・節税テクニック共通） ---- */
+.salary-section-head {
+  margin: var(--space-6) 0 var(--space-1) 0;
+}
+.salary-section-head:first-of-type {
+  margin-top: var(--space-6);
+}
+.salary-section-head .section-label {
+  margin: 0;
+}
+.salary-section-total {
+  font-size: var(--text-xs);
+  color: var(--color-positive);
+}
+
+/* ---- 賞与: 閲覧行 ---- */
+.salary-bonus-row {
+  cursor: pointer;
+  min-height: 44px;
+}
+.salary-bonus-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.salary-bonus-net {
+  font-size: var(--text-sm);
+  color: var(--color-positive);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 賞与シート: 控除内訳 ---- */
+.salary-sheet-figures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.salary-sheet-figrow {
+  font-size: var(--text-sm);
+}
+.salary-sheet-figrow--net {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  color: var(--color-positive);
+}
+
+/* ---- 節税テクニック: 閲覧行 ---- */
+.salary-tech-row {
+  cursor: pointer;
+  min-height: 44px;
+}
+.salary-tech-headline {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+
+/* ---- 節税テクニック シート内 ---- */
+.salary-tech-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.salary-tech-detail-figure {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.salary-tech-detail-bar {
+  margin-top: var(--space-2);
+}
+.salary-tech-detail-note {
+  margin-top: var(--space-3);
+}
+
+/* ---- 給与設定: スライダー + 数値入力の併用 ---- */
+.salary-settings-slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+.salary-settings-slider-row input[type='range'] {
+  flex: 1;
+}
+.salary-settings-numfield {
+  flex-shrink: 0;
+  width: 108px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border2);
+  color: var(--fg);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding: 4px 0;
+}
+.salary-settings-numfield:focus {
+  outline: none;
+  border-bottom-color: var(--primary2);
+}
+.salary-settings-bonus-fields {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.salary-settings-bonus-month {
+  flex: 1;
+}
+.salary-settings-bonus-amount {
+  flex: 2;
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { sb } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
+import './Auth.css';
 
 function translateAuthError(message: string): string {
   const rules: [RegExp, string][] = [
@@ -40,10 +41,10 @@ export function Auth() {
   }
 
   return (
-    <div style={{ padding: '72px 24px 40px 24px', maxWidth: '360px', margin: '0 auto' }}>
-      <div className="topbar-title" style={{ textAlign: 'center', marginBottom: '8px' }}>KAKEIBO</div>
-      <div className="screen-sub" style={{ textAlign: 'center', marginBottom: '28px' }}>{isSignup ? '新規登録' : 'ログイン'}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="auth-screen">
+      <div className="topbar-title auth-brand">KAKEIBO</div>
+      <div className="screen-sub auth-mode">{isSignup ? '新規登録' : 'ログイン'}</div>
+      <div className="auth-fields">
         <div>
           <span className="field-label">メールアドレス</span>
           <input
@@ -59,19 +60,15 @@ export function Auth() {
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           />
         </div>
-        {error && (
-          <div style={{ fontSize: '12px', color: 'var(--red)', background: 'rgba(192,123,114,.1)', padding: '10px 12px', borderRadius: '8px', lineHeight: 1.5 }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="auth-error">{error}</div>}
         <div
-          className="btn-primary" style={{ textAlign: 'center', opacity: loading ? .6 : 1, cursor: loading ? 'default' : 'pointer', marginTop: '4px' }}
+          className={'btn-primary auth-submit' + (loading ? ' auth-submit-loading' : '')}
           onClick={loading ? undefined : submit}
         >
           {loading ? '処理中…' : (isSignup ? '登録する' : 'ログイン')}
         </div>
         <div
-          className="link-quiet" style={{ textAlign: 'center', margin: '4px auto 0 auto' }}
+          className="link-quiet auth-switch"
           onClick={() => { setMode(isSignup ? 'login' : 'signup'); setError(''); }}
         >
           {isSignup ? 'アカウントをお持ちの方はこちら' : 'はじめての方はこちら（新規登録）'}

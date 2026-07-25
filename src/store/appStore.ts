@@ -26,6 +26,16 @@ function userStorageKey(userId: string) {
 let pendingSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncStatusResetTimer: ReturnType<typeof setTimeout> | null = null;
 
+// AppState mixes real user data with pure UI state (current screen, open
+// menus, tab selections, in-progress form fields). Only changes to these
+// keys represent something worth saving to Supabase — navigating around the
+// app must not flash 保存中…/保存済み or hit the network.
+const PERSISTED_KEYS: ReadonlySet<keyof AppState> = new Set<keyof AppState>([
+  'invTarget', 'cuts', 'habitsOff', 'gross', 'savingsGoal', 'spendGoal',
+  'bonuses', 'budgetCategories', 'budgetActuals', 'transfersByMonth',
+  'habits', 'subs', 'events', 'cashExpensesByMonth', 'cashRecurring',
+]);
+
 export const useAppStore = create<Store>((set, get) => {
   function setSyncStatus(v: SyncStatus) {
     set({ syncStatus: v });
@@ -170,7 +180,15 @@ export const useAppStore = create<Store>((set, get) => {
       set({ state: merged });
       if (session) {
         try { localStorage.setItem(userStorageKey(session.user.id), JSON.stringify(merged)); } catch { /* storage full/unavailable */ }
-        scheduleSync();
+        // Sync only when a persisted key actually changed in value — not on
+        // navigation/tab/form-typing patches, and not when a data key was
+        // rewritten with identical content (e.g. the card-transaction merge
+        // on reload producing fresh but equal objects).
+        const dataChanged = Object.keys(next).some((k) =>
+          PERSISTED_KEYS.has(k as keyof AppState) &&
+          JSON.stringify(state[k as keyof AppState]) !== JSON.stringify(next[k as keyof AppState]),
+        );
+        if (dataChanged) scheduleSync();
       }
     },
   };

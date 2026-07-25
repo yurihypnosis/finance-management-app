@@ -1,42 +1,77 @@
 import type { Computed } from '../hooks/useComputed';
-
-function GoalSection({ label, valueFmt, unit, children, pct, barColor, msg, msgColor }: {
-  label: string; valueFmt: string; unit: string; children: React.ReactNode;
-  pct: string; barColor: string; msg: string; msgColor: string;
-}) {
-  return (
-    <div style={{ marginBottom: '28px' }}>
-      <div className="row-flex">
-        <div className="section-label" style={{ margin: 0 }}>{label}</div>
-        <div style={{ fontSize: '15px', fontVariantNumeric: 'tabular-nums' }}>{valueFmt}<span style={{ color: 'var(--muted)', fontSize: '12px' }}>{unit}</span></div>
-      </div>
-      {children}
-      <div className="progress-track"><div style={{ width: pct, background: barColor }} /></div>
-      <div style={{ fontSize: '12px', marginTop: '8px', color: msgColor }}>{msg}</div>
-    </div>
-  );
-}
+import { NumberField } from '../components/common';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { MeterBar } from '../components/charts';
+import './GoalSettings.css';
 
 export function GoalSettings({ v }: { v: Computed }) {
   return (
     <div>
-      <div className="hdr-row">
-        <div className="screen-title" style={{ padding: '4px 0 2px 0' }}>目標の設定</div>
-        <div className="link-quiet" onClick={v.goHome}>ホームへ戻る</div>
+      <ScreenHeader
+        title="目標の設定"
+        sub="ここで設定した内容が「ホーム」「支出」「投資」の表示に反映されます"
+        onBack={v.goHome}
+      />
+
+      {/* 残せるお金の目標 */}
+      <div className="gs-goal-card">
+        <div className="gs-goal-header">
+          <div className="gs-goal-label">残せるお金の目標</div>
+          <div className="gs-goal-value">{v.savingsGoalFmt}<span className="gs-goal-unit">円</span></div>
+        </div>
+        <div className="gs-slider-row">
+          <input type="range" min={0} max={500000} step={10000} value={v.savingsGoal} onChange={v.onSavingsGoal} />
+          <NumberField
+            className="gs-numfield"
+            value={v.savingsGoal}
+            onChange={v.onSavingsGoal}
+            min={0}
+            step={10000}
+          />
+        </div>
+        <MeterBar ratio={v.savingsGoalRatio} height={8} />
+        <div className="gs-feedback" style={{ color: v.savingsGoalColor }}>{v.savingsGoalMsg}</div>
       </div>
-      <div className="screen-sub">ここで設定した目標が、ホーム・支出・投資の各画面に反映されます</div>
 
-      <GoalSection label="残せるお金の目標" valueFmt={v.savingsGoalFmt} unit="円" pct={v.savingsGoalPct} barColor="var(--green)" msg={v.savingsGoalMsg} msgColor={v.savingsGoalColor}>
-        <input type="range" min={0} max={500000} step={10000} value={v.savingsGoal} onChange={v.onSavingsGoal} />
-      </GoalSection>
+      {/* 支出の目標 */}
+      <div className="gs-goal-card">
+        <div className="gs-goal-header">
+          <div className="gs-goal-label">支出の目標</div>
+          <div className="gs-goal-value">{v.spendGoalFmt}<span className="gs-goal-unit">円</span></div>
+        </div>
+        <div className="gs-slider-row">
+          <input type="range" min={100000} max={600000} step={5000} value={v.spendGoal} onChange={v.onSpendGoal} />
+          <NumberField
+            className="gs-numfield"
+            value={v.spendGoal}
+            onChange={v.onSpendGoal}
+            min={0}
+            step={5000}
+          />
+        </div>
+        <MeterBar ratio={v.spendGoalRatio} height={8} />
+        <div className="gs-feedback" style={{ color: v.spendGoalColor }}>{v.spendGoalMsg}</div>
+      </div>
 
-      <GoalSection label="支出の目標" valueFmt={v.spendGoalFmt} unit="円" pct={v.spendGoalPct} barColor={v.spendGoalColor} msg={v.spendGoalMsg} msgColor={v.spendGoalColor}>
-        <input type="range" min={100000} max={600000} step={5000} value={v.spendGoal} onChange={v.onSpendGoal} />
-      </GoalSection>
-
-      <GoalSection label="毎月の投資目標" valueFmt={v.invTargetFmt} unit="円" pct={v.investPct} barColor="var(--green)" msg={v.investMsg} msgColor={v.gapColor}>
-        <input type="range" min={30000} max={200000} step={5000} value={v.invTarget} onChange={v.onInvTarget} />
-      </GoalSection>
+      {/* 毎月の投資目標 */}
+      <div className="gs-goal-card">
+        <div className="gs-goal-header">
+          <div className="gs-goal-label">毎月の投資目標</div>
+          <div className="gs-goal-value">{v.invTargetFmt}<span className="gs-goal-unit">円</span></div>
+        </div>
+        <div className="gs-slider-row">
+          <input type="range" min={30000} max={200000} step={5000} value={v.invTarget} onChange={v.onInvTarget} />
+          <NumberField
+            className="gs-numfield"
+            value={v.invTarget}
+            onChange={v.onInvTarget}
+            min={0}
+            step={5000}
+          />
+        </div>
+        <MeterBar ratio={Math.max(0, (v.surplus + v.cutsTotal) / Math.max(1, v.invTarget))} height={8} />
+        <div className="gs-feedback" style={{ color: v.gapColor }}>{v.investMsg}</div>
+      </div>
     </div>
   );
 }

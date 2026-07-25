@@ -1,0 +1,178 @@
+/* Habit screen — ヒーロー（見直しで浮くお金）+ 2 タブ: 習慣 / サブスク（閲覧行 + 編集シート） */
+
+.hab-caption {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-bottom: var(--space-3);
+}
+
+/* ---- 習慣タブ: 閲覧行 ---- */
+.hab-row {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s;
+  min-height: 44px;
+}
+.hab-row:last-child {
+  border-bottom: none;
+}
+.hab-row:active {
+  background: var(--card2);
+}
+.hab-row.hab-row-off {
+  opacity: .55;
+}
+.hab-row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.hab-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.hab-row-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.hab-row-note {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: 2px;
+}
+.hab-row-note.hab-row-saving {
+  color: var(--color-positive);
+}
+.hab-row-amount {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.hab-add {
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+.hab-save-line {
+  padding: var(--space-4) 0;
+}
+.hab-save-value {
+  font-size: var(--text-lg);
+  font-weight: 400;
+  color: var(--color-positive);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- サブスクタブ: 閲覧行 ---- */
+.sub-row {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s;
+  min-height: 44px;
+}
+.sub-row:last-child {
+  border-bottom: none;
+}
+.sub-row:active {
+  background: var(--card2);
+}
+.sub-row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sub-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.sub-row-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.sub-row-badges {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+.sub-row-amount {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ---- シート内フォーム（習慣の追加/編集・サブスクの活用度/サイクル編集 共通） ---- */
+.hab-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.hab-form-row {
+  display: flex;
+  gap: var(--space-4);
+}
+.hab-form-row > * {
+  flex: 1;
+}
+.hab-sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+/* 大きな選択ボタン群（活用度4択・支払サイクル2択）: タップ領域 44px 以上を確保 */
+.hab-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.hab-choice-btn {
+  min-height: 44px;
+  padding: var(--space-3);
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.hab-choice-btn:active {
+  transform: scale(.98);
+}
+.hab-choice-btn.hab-choice-btn-active {
+  color: var(--fg);
+  border-color: var(--primary2);
+  background: color-mix(in srgb, var(--primary2) 12%, transparent);
+}
+
+.hab-advice {
+  font-size: var(--text-xs);
+  padding: var(--space-3);
+  border-radius: 8px;
+  background: var(--card2);
+}

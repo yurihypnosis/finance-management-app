@@ -1,0 +1,85 @@
+/* ScreenHeader component — unified screen title + back arrow + action */
+
+.screen-header {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 20px 0;
+}
+
+.screen-header__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.screen-header__back {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 24px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.screen-header__back:hover {
+  color: var(--fg);
+}
+
+.screen-header__back:active {
+  opacity: 0.6;
+}
+
+.screen-header__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.screen-header__title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.screen-header__sub {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.screen-header__action {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0 var(--space-2);
+  transition: color 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.screen-header__action:hover {
+  color: var(--fg);
+}
+
+.screen-header__action:active {
+  opacity: 0.6;
+}

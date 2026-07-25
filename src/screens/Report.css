@@ -1,0 +1,147 @@
+/* Report screen — hero (前月比) + trend BarChart + breakdown Donut + plain-language stats */
+
+/* ---- ヒーロー: 前月比 ---- */
+.rep-hero {
+  margin-top: var(--space-4);
+}
+.rep-hero-pct {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  margin-top: var(--space-2);
+}
+.rep-mom-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.rep-mom-row {
+  font-size: var(--text-xs);
+}
+.rep-mom-name {
+  color: var(--muted);
+}
+.rep-mom-diff {
+  font-variant-numeric: tabular-nums;
+}
+.rep-mom-more {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  min-height: 44px;
+  padding: 12px 0;
+}
+
+.rep-empty {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+  padding: var(--space-2) 0;
+}
+
+/* ---- 推移グラフ ---- */
+.rep-trend-chart {
+  margin-top: var(--space-2);
+}
+
+/* ---- 内訳: ドーナツ + カテゴリリスト ---- */
+.rep-breakdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-2);
+}
+.rep-donut-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.rep-donut-total {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rep-donut-caption {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+.rep-breakdown-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.rep-breakdown-row {
+  font-size: var(--text-xs);
+}
+.rep-breakdown-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.rep-breakdown-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rep-breakdown-fig {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  flex-shrink: 0;
+}
+
+/* ---- 統計の平易化: 1行インサイト ---- */
+.rep-insight-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.rep-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  min-height: 44px;
+  padding: 12px 0;
+}
+
+/* ---- 詳しい統計シート ---- */
+.rep-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.rep-detail-heading {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  letter-spacing: .08em;
+  margin-bottom: var(--space-3);
+}
+.rep-stat-n {
+  font-size: var(--text-xs);
+  color: var(--muted2);
+}
+.rep-stat-figures {
+  display: flex;
+  gap: var(--space-5);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+.rep-stat-figlabel {
+  color: var(--muted2);
+  font-size: var(--text-xs);
+}
+.rep-stat-figvalue {
+  font-variant-numeric: tabular-nums;
+}
+.rep-forecast-range {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-1);
+}

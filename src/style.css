@@ -1,6 +1,17 @@
-/* Quiet Instrument tokens — aligned with my-learning-app's ui-design skill */
+/* ============================================================
+   Design tokens — Quiet Instrument system
+   aligned with my-learning-app's ui-design skill.
+   Single source of truth for type / spacing / color. New rules
+   should reference these variables instead of literal values
+   (docs/ui-improvement-strategy.md 原則3). Existing rules further
+   down this file predate the scale and keep their literal values
+   for now — this pass only builds out the token layer, it does
+   not refactor consumers.
+   ============================================================ */
 :root {
   color-scheme: dark;
+
+  /* ---------- surfaces & ink (existing, unchanged) ---------- */
   --bg: #0f1117;
   --card: #1a1d27;
   --card2: #141720;
@@ -9,11 +20,79 @@
   --fg: #e8eaf0;
   --muted: #8892a4;
   --muted2: #555e70;
+
+  /* ---------- brand / status base colors (existing, unchanged) ----------
+     Usage contract — do not violate when adding new UI:
+       green  = achievement / good state ONLY (under budget, goal met)
+       amber  = caution / approaching a limit
+       red    = over budget / warning ONLY, never decorative
+       primary = interactive / selected state (buttons, links, focus ring)
+     An amount is never colored red/amber/green for being large or small —
+     only the *evaluated state* (vs. a budget or goal) may carry status
+     color. See ui-improvement-strategy.md 原則3.
+  ------------------------------------------------------------------------ */
   --primary: #3b82f6;
   --primary2: #60a5fa;
   --green: #6ab08d;
   --amber: #c9a15a;
   --red: #c07b72;
+
+  /* ---------- semantic color aliases ----------
+     Prefer these names in new code — they document *why* a color is
+     used rather than *which* hue. Each aliases a base token above, so
+     retuning a hue only means touching one declaration.
+  ------------------------------------------------------------------- */
+  --color-positive: var(--green);      /* good / achieved / under budget */
+  --color-warning: var(--amber);       /* caution / approaching a limit */
+  --color-danger: var(--red);          /* over budget / error */
+  --color-accent: var(--primary);      /* interactive / selected */
+  --color-accent-strong: var(--primary2);
+
+  /* ---------- type scale ----------
+     5 body steps + 1 hero size (was 12 unstructured sizes across the
+     app). Body copy defaults to --text-base; supporting/meta text may
+     drop to --text-xs but never below it (原則3: 補助テキスト下限12px).
+  ------------------------------------------------------------------- */
+  --text-xs: 12px;    /* meta, captions, timestamps — floor, never smaller */
+  --text-sm: 13px;    /* secondary body text, list-row values */
+  --text-base: 15px;  /* default body copy */
+  --text-lg: 20px;    /* section/card headings */
+  --text-xl: 28px;    /* sub-hero emphasis numbers */
+  --text-hero: 44px;  /* the one number per screen (原則1) */
+
+  /* ---------- spacing scale (4px grid) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* ---------- category color palette ----------
+     10 hues for budget/expense categories, tuned to the same muted,
+     desaturated tone family as --green/--amber (OKLCH C≈0.10–0.12,
+     L≈0.60–0.66) so they read as "quiet" on --bg instead of competing
+     with the green/amber/red status colors above.
+
+     Order is the CVD-safety mechanism, not cosmetic — validated against
+     the dark surface (#0f1117) with the dataviz skill's
+     validate_palette.js: worst adjacent CVD ΔE 10.4 (target ≥8), worst
+     adjacent normal-vision ΔE 15.4 (floor ≥15), all 10 ≥3:1 contrast.
+     Assign in this fixed order per category; never re-cycle hues or
+     reassign by value, and never reuse a --cat-* hue for status meaning.
+  ------------------------------------------------------------------- */
+  --cat-1: #c77255;  /* terracotta */
+  --cat-2: #009eb3;  /* teal */
+  --cat-3: #c86e6f;  /* rose */
+  --cat-4: #678bd2;  /* blue */
+  --cat-5: #12a28c;  /* jade */
+  --cat-6: #b68031;  /* gold */
+  --cat-7: #bf6e98;  /* magenta */
+  --cat-8: #7c9845;  /* olive */
+  --cat-9: #917dca;  /* violet */
+  --cat-10: #44a171; /* green */
 }
 
 * { box-sizing: border-box; }
@@ -58,6 +137,19 @@ a { color: var(--primary2); text-decoration: none; }
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---------- screen transition (Phase 4: 最小限のモーション) ----------
+   A short fade on the screen's root wrapper each time #content switches to
+   a different screen (App.tsx keys this wrapper by screen name so it
+   remounts and replays the animation). Kept to opacity only — no slide —
+   per the "やりすぎない" constraint. */
+.screen-enter {
+  animation: screen-fade-in 150ms ease-out;
+}
+@keyframes screen-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ---------- initial-load screen (was a blank black rect while auth resolved) ---------- */
 .loading-screen {
   flex: 1;
@@ -81,7 +173,7 @@ a { color: var(--primary2); text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   background: rgba(15,17,23,.92);
   backdrop-filter: blur(18px);
@@ -99,10 +191,10 @@ a { color: var(--primary2); text-decoration: none; }
 
 .topbar-title {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: .28em;
-  color: var(--muted);
+  letter-spacing: .24em;
+  color: var(--muted2);
   white-space: nowrap;
 }
 
@@ -135,7 +227,7 @@ a { color: var(--primary2); text-decoration: none; }
 }
 .bottom-nav-item:active { opacity: .6; }
 .bottom-nav-label {
-  font-size: 10px; letter-spacing: .02em;
+  font-size: var(--text-xs); letter-spacing: .02em;
 }
 
 /* ---------- drawer menu ---------- */
@@ -144,6 +236,7 @@ a { color: var(--primary2); text-decoration: none; }
   background: rgba(8,9,13,.6);
   display: flex; justify-content: flex-start;
   z-index: 20;
+  animation: menu-overlay-fade-in 180ms ease-out;
 }
 .menu-panel {
   width: 68%;
@@ -153,17 +246,29 @@ a { color: var(--primary2); text-decoration: none; }
   border-right: 1px solid var(--border);
   padding: 24px 22px;
   display: flex; flex-direction: column;
+  animation: menu-panel-slide-in 180ms ease-out;
+}
+@keyframes menu-overlay-fade-in {
+  from { background: rgba(8,9,13,0); }
+  to { background: rgba(8,9,13,.6); }
+}
+@keyframes menu-panel-slide-in {
+  from { transform: translateX(-12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 .menu-panel-title {
   font-size: 11px; color: var(--muted2); letter-spacing: .16em; text-transform: uppercase;
   margin-bottom: 12px;
 }
 .menu-item {
+  min-height: 44px;
+  display: flex; align-items: center;
   padding: 14px 0; font-size: 14px; font-weight: 500; cursor: pointer;
   border-bottom: 1px solid var(--border);
-  transition: color .2s;
+  transition: color .2s, background .15s;
 }
 .menu-item:last-child { border-bottom: none; }
+.menu-item:active { background: var(--card2); }
 
 /* ---------- month switcher ---------- */
 .month-switcher {
@@ -182,23 +287,11 @@ a { color: var(--primary2); text-decoration: none; }
 }
 
 /* ---------- header ---------- */
-.hdr-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 4px 0 24px 0;
-}
-
-.hdr-date { font-size: 11px; color: var(--muted2); letter-spacing: .16em; text-transform: uppercase; }
-.hdr-title {
-  font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500;
-  letter-spacing: .32em; color: var(--muted); margin-top: 4px;
-}
 
 .link-quiet {
   font-size: 12px; color: var(--muted); letter-spacing: .04em; cursor: pointer;
-  border-bottom: 1px solid var(--border2); padding: 4px 0 5px 0;
-  display: inline-block; transition: color .15s, border-color .15s;
+  border-bottom: 1px solid var(--border2); padding: 12px 0;
+  display: inline-flex; align-items: center; min-height: 44px; transition: color .15s, border-color .15s;
 }
 .link-quiet:hover { color: var(--fg); border-bottom-color: var(--muted); }
 
@@ -223,10 +316,6 @@ a { color: var(--primary2); text-decoration: none; }
 .hero-sub { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
 /* ---------- generic section chrome ---------- */
-.screen-title {
-  font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--muted); padding: 4px 0 2px 0;
-}
 .screen-sub {
   font-size: 12px; color: var(--muted2); margin-bottom: 20px;
 }
@@ -261,9 +350,11 @@ a { color: var(--primary2); text-decoration: none; }
 /* quiet alert row (replaces the loud over-budget card) */
 .alert-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 0; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border);
-  cursor: pointer; margin-bottom: 4px;
+  padding: 12px 0; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border);
+  cursor: pointer; margin-bottom: 4px; min-height: 44px;
+  transition: background .15s;
 }
+.alert-row:active { background: var(--card2); }
 
 /* segmented control rendered as underline tabs, not filled pills */
 .seg-tabs {
@@ -272,9 +363,9 @@ a { color: var(--primary2); text-decoration: none; }
 }
 .seg-tabs::-webkit-scrollbar { display: none; }
 .seg-tab {
-  padding: 0 0 10px 0; font-size: 13px; font-weight: 500; cursor: pointer;
-  color: var(--muted); border-bottom: 1.5px solid transparent; margin-bottom: -1px;
-  white-space: nowrap; flex-shrink: 0;
+  padding: 12px 0; font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--muted); border-bottom: 1.5px solid transparent; margin-bottom: 0;
+  white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; min-height: 44px;
 }
 
 /* inputs */
@@ -286,12 +377,6 @@ a { color: var(--primary2); text-decoration: none; }
 .field-input:focus, .field-select:focus { border-bottom-color: var(--primary2); }
 .field-label { font-size: 11px; color: var(--muted2); letter-spacing: .1em; margin-bottom: 6px; display: block; }
 
-.budget-used-input {
-  background: transparent; border: none; border-bottom: 1px solid var(--border2);
-  color: var(--fg); font-size: 13px; font-family: inherit; font-variant-numeric: tabular-nums;
-  outline: none; width: 90px; padding: 2px 0;
-}
-.budget-used-input:focus { border-bottom-color: var(--primary2); }
 
 .btn-primary {
   flex: 1; text-align: center; padding: 12px; border-radius: 8px;
@@ -305,13 +390,13 @@ a { color: var(--primary2); text-decoration: none; }
   width: 84px; text-align: center; padding: 12px; border-radius: 8px;
   font-size: 13px; font-weight: 500; cursor: pointer;
   border: 1px solid var(--border2); color: var(--muted);
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s; min-height: 44px; display: flex; align-items: center; justify-content: center;
 }
 .btn-cancel:hover { background: var(--card); color: var(--fg); }
 .btn-add {
-  display: inline-block; font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center; font-size: 12px; font-weight: 500;
   letter-spacing: .06em; color: var(--muted); cursor: pointer;
-  border-bottom: 1px solid var(--border2); padding: 6px 2px;
+  border-bottom: 1px solid var(--border2); padding: 12px 0; min-height: 44px;
   transition: color .15s, border-color .15s;
 }
 .btn-add:hover { color: var(--fg); border-bottom-color: var(--muted); }
@@ -326,19 +411,15 @@ a { color: var(--primary2); text-decoration: none; }
   background: var(--fg); transition: left .2s;
 }
 
-/* usage-level chooser (よく使う/たまに/ほぼ無し/未使用) as quiet text toggles */
-.usage-pill {
-  flex: 1; text-align: center; padding: 6px 2px; font-size: 11px; font-weight: 500;
-  cursor: pointer; border-bottom: 1.5px solid transparent; color: var(--muted2);
-}
 
 /* checklist rows for the invest cut list */
 .check-row {
   display: flex; align-items: center; gap: 12px; padding: 14px 0;
   border-bottom: 1px solid var(--border); cursor: pointer;
-  transition: background .15s;
+  transition: background .15s; min-height: 44px;
 }
-.check-row:hover { background: var(--card2); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+.check-row:hover,
+.check-row:active { background: var(--card2); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
 .check-box {
   width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--border2);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -355,4 +436,14 @@ input[type=range]::-moz-range-track { height: 2px; border-radius: 1px; backgroun
 input[type=range]::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 7px; border: none;
   background: var(--primary2);
+}
+
+/* ---------- reduced motion (Phase 4 additions only; charts.css handles
+   its own bar/donut transitions separately) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter,
+  .menu-overlay,
+  .menu-panel {
+    animation: none;
+  }
 }

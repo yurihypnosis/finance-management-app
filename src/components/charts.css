@@ -1,0 +1,181 @@
+/* ============================================================
+   Chart primitives — Phase 1 基盤 (docs/ui-improvement-strategy.md 原則2)
+   All colors come from the token layer in style.css; nothing here
+   hard-codes a hue. Geometry is expressed in --space-* / px multiples
+   of the 4px grid. Dark surface (--bg #0f1117) is the only assumption.
+   ============================================================ */
+
+.chart-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ---------- BarChart ---------- */
+
+.chart-bars {
+  width: 100%;
+}
+
+/* Plot area: the SVG paints the bars, an HTML layer on top owns the
+   tap targets and the selected-value label (real text, not scaled
+   SVG text, so it stays crisp at any container width). */
+.chart-bars-plot {
+  position: relative;
+  width: 100%;
+}
+
+.chart-bars-svg {
+  display: block;
+  width: 100%;
+  overflow: hidden; /* clips the rounded-corner overhang at the baseline */
+}
+
+.chart-bar-rect {
+  transition: y 260ms cubic-bezier(.22, .61, .36, 1),
+              height 260ms cubic-bezier(.22, .61, .36, 1),
+              fill 160ms linear;
+}
+
+.chart-bars-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.chart-bars-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chart-bars-col[disabled] {
+  cursor: default;
+}
+
+.chart-bar-value {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: 1;
+  color: var(--fg);
+  pointer-events: none;
+  transition: bottom 260ms cubic-bezier(.22, .61, .36, 1);
+}
+
+.chart-bar-value--first {
+  left: 0;
+  transform: none;
+}
+
+.chart-bar-value--last {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.chart-bars-axis {
+  display: flex;
+  margin-top: var(--space-2);
+}
+
+.chart-bars-axis-label {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 160ms linear;
+}
+
+.chart-bars-axis-label.is-on {
+  color: var(--fg);
+}
+
+/* ---------- Donut ---------- */
+
+.chart-donut {
+  position: relative;
+  flex: none;
+}
+
+.chart-donut-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* 12 o'clock start */
+}
+
+.chart-donut-seg {
+  transition: stroke-dasharray 320ms cubic-bezier(.22, .61, .36, 1),
+              stroke-dashoffset 320ms cubic-bezier(.22, .61, .36, 1),
+              stroke 160ms linear;
+}
+
+.chart-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ---------- StackedBar / MeterBar ---------- */
+
+.chart-track {
+  position: relative;
+  display: flex;
+  width: 100%;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chart-track-seg {
+  height: 100%;
+  min-width: 0;
+  transition: width 320ms cubic-bezier(.22, .61, .36, 1),
+              background-color 160ms linear;
+}
+
+/* 2px of surface between adjacent fills, per the dataviz mark spec —
+   drawn as a border rather than a margin so it never shifts widths. */
+.chart-track-seg + .chart-track-seg {
+  border-left: 2px solid var(--bg);
+}
+
+.chart-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 320ms cubic-bezier(.22, .61, .36, 1),
+              background-color 160ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar-rect,
+  .chart-bar-value,
+  .chart-donut-seg,
+  .chart-track-seg,
+  .chart-meter-fill,
+  .chart-bars-axis-label {
+    transition: none;
+  }
+}

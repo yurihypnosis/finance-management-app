@@ -19,21 +19,24 @@ import { GoalSettings } from './screens/GoalSettings';
 function Screens() {
   const v = useComputed();
   let screen;
-  if (v.isHome) screen = <Home v={v} />;
-  else if (v.isExpense) screen = <Expense v={v} />;
-  else if (v.isHabit) screen = <Habit v={v} />;
-  else if (v.isBudget) screen = <Budget v={v} />;
-  else if (v.isReport) screen = <Report v={v} />;
-  else if (v.isAnnual) screen = <Annual v={v} />;
-  else if (v.isInvest) screen = <Invest v={v} />;
-  else if (v.isSalarySettings) screen = <SalarySettings v={v} />;
-  else if (v.isGoalSettings) screen = <GoalSettings v={v} />;
-  else screen = <Salary v={v} />;
+  let screenKey;
+  if (v.isHome) { screen = <Home v={v} />; screenKey = 'home'; }
+  else if (v.isExpense) { screen = <Expense v={v} />; screenKey = 'expense'; }
+  else if (v.isHabit) { screen = <Habit v={v} />; screenKey = 'habit'; }
+  else if (v.isBudget) { screen = <Budget v={v} />; screenKey = 'budget'; }
+  else if (v.isReport) { screen = <Report v={v} />; screenKey = 'report'; }
+  else if (v.isAnnual) { screen = <Annual v={v} />; screenKey = 'annual'; }
+  else if (v.isInvest) { screen = <Invest v={v} />; screenKey = 'invest'; }
+  else if (v.isSalarySettings) { screen = <SalarySettings v={v} />; screenKey = 'salarySettings'; }
+  else if (v.isGoalSettings) { screen = <GoalSettings v={v} />; screenKey = 'goalSettings'; }
+  else { screen = <Salary v={v} />; screenKey = 'salary'; }
 
   return (
     <>
       <Topbar />
-      <div id="content">{screen}</div>
+      <div id="content">
+        <div className="screen-enter" key={screenKey}>{screen}</div>
+      </div>
       <div id="menu"><Menu v={v} /></div>
       <BottomNav v={v} />
     </>

@@ -1,0 +1,40 @@
+/* ---------- auth screen (login / signup) ---------- */
+.auth-screen {
+  padding: 72px 24px 40px 24px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+.auth-brand {
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+.auth-mode {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.auth-error {
+  font-size: var(--text-xs);
+  color: var(--red);
+  background: rgba(192, 123, 114, .1);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+.auth-submit {
+  text-align: center;
+  margin-top: var(--space-1);
+  cursor: pointer;
+}
+.auth-submit.auth-submit-loading {
+  opacity: .6;
+  cursor: default;
+}
+.auth-switch {
+  text-align: center;
+  margin: var(--space-1) auto 0 auto;
+}
