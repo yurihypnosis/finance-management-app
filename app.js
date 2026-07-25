@@ -179,6 +179,18 @@ function renderAuth() {
 
   const a = authState;
   const isSignup = a.mode === 'signup';
+  function translateAuthError(message) {
+    const rules = [
+      [/invalid login credentials/i, 'メールアドレスまたはパスワードが正しくありません'],
+      [/already registered|already exists/i, 'このメールアドレスはすでに登録されています'],
+      [/password.*at least|password.*short|weak password/i, 'パスワードは6文字以上で入力してください'],
+      [/invalid email|unable to validate email/i, 'メールアドレスの形式が正しくありません'],
+      [/rate limit|too many requests/i, '試行回数が多すぎます。しばらく待ってから再度お試しください'],
+      [/network/i, 'ネットワークエラーが発生しました。接続を確認してください'],
+    ];
+    for (const r of rules) if (r[0].test(message)) return r[1];
+    return message;
+  }
   function submit() {
     if (!a.email.trim() || !a.password) { setAuthState({ error: 'メールアドレスとパスワードを入力してください' }); return; }
     setAuthState({ loading: true, error: '' });
@@ -186,7 +198,7 @@ function renderAuth() {
       ? sb.auth.signUp({ email: a.email.trim(), password: a.password })
       : sb.auth.signInWithPassword({ email: a.email.trim(), password: a.password });
     call.then(function (res) {
-      if (res.error) { setAuthState({ loading: false, error: res.error.message }); return; }
+      if (res.error) { setAuthState({ loading: false, error: translateAuthError(res.error.message) }); return; }
       if (!res.data.session) { setAuthState({ loading: false, error: 'メールの確認が必要です。管理者に確認してください' }); return; }
       setAuthState({ loading: false, error: '' });
       enterApp(res.data.session);
