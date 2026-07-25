@@ -26,13 +26,6 @@ html, body {
   color: var(--fg);
 }
 
-body {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 24px 0;
-}
-
 ::-webkit-scrollbar { display: none; }
 
 a { color: var(--primary2); text-decoration: none; }
@@ -43,17 +36,19 @@ a { color: var(--primary2); text-decoration: none; }
   border-radius: 2px;
 }
 
+/* No phone-mockup frame — that only ever looked right as a desktop preview
+   device; on an actual phone it just showed up as a pointless inset border
+   with rounded corners and dead space top/bottom. The app now simply fills
+   the viewport, with a max-width on wide screens for readable line length. */
 #phone {
   width: 100%;
-  max-width: 430px;
-  min-height: calc(100vh - 48px);
+  max-width: 480px;
+  min-height: 100vh;
+  margin: 0 auto;
   background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
 }
 
 #content {
