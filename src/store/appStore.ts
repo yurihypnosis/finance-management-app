@@ -33,7 +33,7 @@ let syncStatusResetTimer: ReturnType<typeof setTimeout> | null = null;
 const PERSISTED_KEYS: ReadonlySet<keyof AppState> = new Set<keyof AppState>([
   'invTarget', 'cuts', 'habitsOff', 'gross', 'savingsGoal', 'spendGoal',
   'bonuses', 'budgetCategories', 'budgetActuals', 'transfersByMonth',
-  'habits', 'subs', 'events', 'cashExpensesByMonth', 'cashRecurring',
+  'habits', 'subs', 'deletedSubIds', 'events', 'cashExpensesByMonth', 'cashRecurring',
 ]);
 
 export const useAppStore = create<Store>((set, get) => {
@@ -113,16 +113,20 @@ export const useAppStore = create<Store>((set, get) => {
           });
 
           // Real imported subscriptions replace the generic starter placeholders,
-          // but keep whatever usage classification the user already set for a
-          // subscription that's still present (matched by its stable id).
+          // but keep whatever the user already set for a subscription that's
+          // still present (matched by its stable id): usage classification and
+          // cancellation state must survive a reload.
           let subs = st.subs;
           if (derivedSubs.length > 0) {
             const prevById: Record<string, any> = {};
             st.subs.forEach((s) => { prevById[s.id] = s; });
-            subs = derivedSubs.map((d) => {
-              const prev = prevById[d.id];
-              return { id: d.id, name: d.name, price: d.price, cycle: d.cycle, usage: prev ? prev.usage : 'mid' } as any;
-            });
+            const deleted = new Set(st.deletedSubIds || []);
+            subs = derivedSubs
+              .filter((d) => !deleted.has(d.id))
+              .map((d) => {
+                const prev = prevById[d.id];
+                return { id: d.id, name: d.name, price: d.price, cycle: d.cycle, usage: prev ? prev.usage : 'mid', cancelledMonth: prev?.cancelledMonth } as any;
+              });
           }
 
           return { budgetActuals: ba, subs, dbLoaded: true };

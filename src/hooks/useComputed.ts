@@ -1,7 +1,7 @@
 import { useAppStore } from '../store/appStore';
 import {
   monthKey, shiftMonthKey, monthLabel, isoDate, dateShortLabel,
-  whenToMonthValue, monthValueToWhen, monthsUntilMonth,
+  whenToMonthValue, monthValueToWhen, monthsBetweenMonths,
   RATES, SYM, COACH_ON, fmt, mean, stdev, Z80, subMonthly, subAnnual, tax, bonusTax,
 } from '../lib/calc';
 import type { AppState } from '../lib/types';
@@ -201,8 +201,15 @@ export function useComputed() {
     },
   }));
 
-  const noneSubs = s.subs.filter((x) => x.usage === 'none');
-  const lowSubs = s.subs.filter((x) => x.usage === 'low');
+  /* 解約状態でサブスクを2段階に区分する。
+     - activeSubs: 契約中のみ。解約候補・削減プランの対象。
+     - simSubs: 契約中 + 今月解約分。今月分の支払いは残るため出費シミュレーションには反映し、
+       前月以前に解約済みのものは今後の出費に影響しないので除外する。 */
+  const activeSubs = s.subs.filter((x) => !x.cancelledMonth);
+  const simSubs = s.subs.filter((x) => !x.cancelledMonth || x.cancelledMonth >= currentRealMonth);
+
+  const noneSubs = activeSubs.filter((x) => x.usage === 'none');
+  const lowSubs = activeSubs.filter((x) => x.usage === 'low');
   const lowSubTotal = noneSubs.concat(lowSubs).reduce((a, x) => a + subMonthly(x), 0);
   /* ヒーロー「見直しで浮くお金」= OFF習慣の節約額 + 未活用サブスクの月換算合計。
      既存の habitSave / lowSubTotal をそのまま合算するだけで、計算式自体は変えない。 */
@@ -212,7 +219,7 @@ export function useComputed() {
   const cutDefs = ([] as { id: string; label: string; note: string; save: number }[])
     .concat(noneSubs.map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を解約（未使用）', note: '全く使っていないサービス・' + subCycleNote(x), save: subMonthly(x) })))
     .concat(lowSubs.map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を解約', note: '活用度: ほぼ無し・' + subCycleNote(x), save: subMonthly(x) })))
-    .concat(s.subs.filter((x) => x.usage === 'mid').map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を一時停止', note: '活用度: 低・利用月のみの契約も検討', save: subMonthly(x) })))
+    .concat(activeSubs.filter((x) => x.usage === 'mid').map((x) => ({ id: 'sub-' + x.id, label: x.name + ' を一時停止', note: '活用度: 低・利用月のみの契約も検討', save: subMonthly(x) })))
     .concat(habitDefs.filter((hb) => !s.habitsOff[hb.id]).map((hb) => ({ id: 'habit-' + hb.id, label: hb.name + ' を減らす', note: hb.freq + '・' + fmt(hb.month) + '円/月', save: Math.round(hb.month * 0.3) })));
 
   const cutsTotal = cutDefs.reduce((a, c) => a + (s.cuts[c.id] ? c.save : 0), 0);
@@ -242,8 +249,21 @@ export function useComputed() {
     };
   });
 
+  /** 目標額を「開始月〜時期」の月数で按分した月々の積立額。時期が読めない場合は現状維持。 */
+  function prorate(ev: AppState['events'][number]): number {
+    const whenV = whenToMonthValue(ev.when);
+    if (!whenV || ev.target <= 0) return ev.monthly;
+    return Math.round(ev.target / monthsBetweenMonths(ev.startMonth || currentRealMonth, whenV));
+  }
+  /** イベント編集は変更のたびに monthly を按分し直す（monthly の手入力は廃止）。 */
   function setEvent(idx: number, patch: Partial<AppState['events'][number]>) {
-    setState((st) => ({ events: st.events.map((e, i) => (i === idx ? { ...e, ...patch } : e)) }));
+    setState((st) => ({
+      events: st.events.map((e, i) => {
+        if (i !== idx) return e;
+        const next = { ...e, ...patch };
+        return { ...next, monthly: prorate(next) };
+      }),
+    }));
   }
   function removeEvent(idx: number) {
     setState((st) => ({ events: st.events.filter((_e, i) => i !== idx) }));
@@ -257,24 +277,31 @@ export function useComputed() {
     return {
       idx, name: ev.name, when: ev.when, currency: ev.currency, targetRaw: ev.target, savedRaw: ev.saved, monthlyRaw: ev.monthly,
       whenMonthValue: whenToMonthValue(ev.when),
+      startMonthValue: ev.startMonth || '',
       onName: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { name: e.target.value }),
       onWhen: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { when: monthValueToWhen(e.target.value) }),
+      onStartMonth: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { startMonth: e.target.value || undefined }),
       onSaved: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { saved: Math.max(0, +e.target.value || 0) }),
       onTarget: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { target: Math.max(1, +e.target.value || 0) }),
-      onMonthly: (e: React.ChangeEvent<HTMLInputElement>) => setEvent(idx, { monthly: Math.max(0, +e.target.value || 0) }),
       remove: () => removeEvent(idx),
       savedFmt: isFx ? SYM[ev.currency] + fmt(ev.saved) : manFmt(ev.saved, 1),
       targetFmt: isFx ? SYM[ev.currency] + fmt(ev.target) : manFmt(ev.target, 0),
       monthlyFmt: isFx ? SYM[ev.currency] + fmt(ev.monthly) : manFmt(ev.monthly, 1),
       ratio,
       fxNote: isFx ? '自動円換算: 目標 ≒ ' + fmt(jpy(ev.target)) + '円・月 ≒ ' + fmt(jpy(ev.monthly)) + '円（1 ' + ev.currency + ' = ' + rate.toFixed(1) + '円）' : '',
+      prorationNote: (() => {
+        const whenV = whenToMonthValue(ev.when);
+        if (!whenV) return '時期を設定すると開始月から自動で按分されます';
+        const startV = ev.startMonth || currentRealMonth;
+        return monthLabel(startV) + '〜' + ev.when + '・' + monthsBetweenMonths(startV, whenV) + 'ヶ月で按分';
+      })(),
       barColor: ratio >= 1 ? 'var(--color-positive)' : 'var(--color-accent)',
     };
   });
   const eventMonthlyTotal = s.events.reduce((a, ev) => a + ev.monthly * (RATES[ev.currency] || 1), 0);
 
   /* ---- annual expense simulation ---- */
-  const subsAnnualTotal = s.subs.reduce((a, x) => a + subAnnual(x), 0);
+  const subsAnnualTotal = simSubs.reduce((a, x) => a + subAnnual(x), 0);
   const subsMonthly = subsAnnualTotal / 12;
   const habitsOnMonthly = habitDefs.reduce((a, hb) => a + (s.habitsOff[hb.id] ? 0 : hb.month), 0);
   const recordedMonths = Object.keys(s.budgetActuals);
@@ -348,7 +375,7 @@ export function useComputed() {
   const annualCash = Math.round(cashAvgMonthly * 12);
   const annualBreakdown = [
     { key: 'fixed', name: '固定費', monthly: fixedCoreMonthly, annual: annualFixed, note: '家賃・駐車場・光熱・通信・保険' },
-    { key: 'subs', name: 'サブスク', monthly: subsMonthly, annual: annualSubs, note: s.subs.length + '件・現在の契約から算出' },
+    { key: 'subs', name: 'サブスク', monthly: subsMonthly, annual: annualSubs, note: simSubs.length + '件・現在の契約から算出（解約済みは除外）' },
     { key: 'habits', name: '習慣（ONのみ）', monthly: habitsOnMonthly, annual: annualHabits, note: habitDefs.filter((hb) => !s.habitsOff[hb.id]).length + '/' + habitDefs.length + '件が対象' },
     { key: 'variable', name: '流動費（買い物・ETC・食費等）', monthly: Math.round(variableBudgetMonthly), annual: annualVariable, note: variableBasedOnActuals ? '記録済み月の平均から算出' : 'まだ記録がないため予算目標から算出' },
     { key: 'cash', name: '現金支出', monthly: Math.round(cashAvgMonthly), annual: annualCash, note: recordedCashMonths.length > 0 ? recordedCashMonths.length + 'ヶ月分の記録から平均' : 'まだ記録がありません' },
@@ -483,11 +510,29 @@ export function useComputed() {
   function setCycle(id: string, cycle: AppState['subs'][number]['cycle']) {
     return () => setState((st) => ({ subs: st.subs.map((x) => (x.id === id ? { ...x, cycle } : x)) }));
   }
+  function setCancelledMonth(id: string, cancelledMonth: string | undefined) {
+    return () => setState((st) => ({ subs: st.subs.map((x) => (x.id === id ? { ...x, cancelledMonth } : x)) }));
+  }
   const subRows = s.subs.map((sub) => {
     const annual = subAnnual(sub);
     const badge = usageBadge[sub.usage];
+    const cancelled = !!sub.cancelledMonth;
+    const cancelledPast = cancelled && sub.cancelledMonth! < currentRealMonth;
     return {
       id: sub.id, name: sub.name, usage: sub.usage,
+      cancelled, cancelledPast,
+      activeOn: !cancelled, cancelledThisMonthOn: cancelled && !cancelledPast, cancelledPastOn: cancelledPast,
+      setActive: setCancelledMonth(sub.id, undefined),
+      cancelThisMonth: setCancelledMonth(sub.id, currentRealMonth),
+      cancelPast: setCancelledMonth(sub.id, shiftMonthKey(currentRealMonth, -1)),
+      remove: () => setState((st) => ({
+        subs: st.subs.filter((x) => x.id !== sub.id),
+        // カード明細からの再構築（appStore.loadCardTransactions）で復活しないよう削除idを控える
+        deletedSubIds: (st.deletedSubIds || []).concat([sub.id]),
+      })),
+      cancelledNote: !cancelled ? ''
+        : cancelledPast ? monthLabel(sub.cancelledMonth!) + 'に解約済み。出費シミュレーションには反映されません'
+        : '今月で解約。今月分まで出費シミュレーションに反映されます',
       priceFmt: fmt(sub.price), priceUnit: sub.cycle === 'annual' ? '円/年' : '円/月',
       monthlyFmt: fmt(subMonthly(sub)),
       isAnnual: sub.cycle === 'annual', isMonthly: sub.cycle !== 'annual',
@@ -495,7 +540,7 @@ export function useComputed() {
       setHigh: setUsage(sub.id, 'high'), setMid: setUsage(sub.id, 'mid'), setLow: setUsage(sub.id, 'low'), setNone: setUsage(sub.id, 'none'),
       highOn: sub.usage === 'high', midOn: sub.usage === 'mid', lowOn: sub.usage === 'low', noneOn: sub.usage === 'none',
       usageLabel: badge.label, usageTone: badge.tone, usageRank: badge.rank,
-      cancelCandidate: sub.usage === 'low' || sub.usage === 'none',
+      cancelCandidate: !cancelled && (sub.usage === 'low' || sub.usage === 'none'),
       advice: sub.usage === 'none' ? '全く使用なし。即解約で年 ' + fmt(annual) + '円の削減'
         : sub.usage === 'low' ? '解約候補・年 ' + fmt(annual) + '円の削減余地'
         : sub.usage === 'mid' ? '利用月のみ契約する運用も検討の余地'
@@ -604,32 +649,34 @@ export function useComputed() {
     eventMonthlyFmt: fmt(eventMonthlyTotal), eventCount: s.events.length,
     addEventOpen: s.addEventOpen,
     openAddEvent: () => setState({ addEventOpen: true }), closeAddEvent: () => setState({ addEventOpen: false }),
-    evName: s.evName, evWhen: s.evWhen, evAmount: s.evAmount, evMonths: s.evMonths, evCurrency: s.evCurrency,
-    // <input type="month"> の下限。過去の月を選んでも monthsUntilMonth が最低1に丸めるが、UI 上も選ばせない。
+    evName: s.evName, evWhen: s.evWhen, evStart: s.evStart || currentRealMonth, evAmount: s.evAmount, evMonths: s.evMonths, evCurrency: s.evCurrency,
+    // <input type="month"> の下限。過去の月を選んでも按分計算が最低1ヶ月に丸めるが、UI 上も選ばせない。
     evWhenMin: currentRealMonth,
     onEvName: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evName: e.target.value }),
-    onEvWhen: (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = e.target.value;
-      setState({ evWhen: v, evMonths: v ? monthsUntilMonth(v) : 12 });
-    },
+    onEvWhen: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evWhen: e.target.value }),
+    onEvStart: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evStart: e.target.value }),
     onEvAmount: (e: React.ChangeEvent<HTMLInputElement>) => setState({ evAmount: +e.target.value }),
     onEvCurrency: (e: React.ChangeEvent<HTMLSelectElement>) => setState({ evCurrency: e.target.value }),
     evMonthlyPreview: (() => {
-      const amt = +s.evAmount || 0, months = s.evWhen ? monthsUntilMonth(s.evWhen) : Math.max(1, +s.evMonths || 1);
+      const amt = +s.evAmount || 0;
+      const start = s.evStart || currentRealMonth;
+      const months = s.evWhen ? monthsBetweenMonths(start, s.evWhen) : 12;
       const rate = RATES[s.evCurrency] || 1;
       const per = amt / months;
-      const until = s.evWhen ? monthLabel(s.evWhen) + 'まで・' : '';
+      const range = s.evWhen ? monthLabel(start) + '〜' + monthLabel(s.evWhen) + '・' : '時期未定（12ヶ月で仮按分）・';
       return s.evCurrency === 'JPY'
-        ? until + '月 ' + fmt(per) + '円 × ' + months + 'ヶ月'
-        : until + '月 ' + SYM[s.evCurrency] + fmt(per) + ' ≒ ' + fmt(per * rate) + '円 × ' + months + 'ヶ月（1 ' + s.evCurrency + ' = ' + rate.toFixed(1) + '円）';
+        ? range + '月 ' + fmt(per) + '円 × ' + months + 'ヶ月'
+        : range + '月 ' + SYM[s.evCurrency] + fmt(per) + ' ≒ ' + fmt(per * rate) + '円 × ' + months + 'ヶ月（1 ' + s.evCurrency + ' = ' + rate.toFixed(1) + '円）';
     })(),
     formEventValid: !!s.evName.trim() && (+s.evAmount || 0) > 0,
     formEventError: !s.evName.trim() ? 'イベント名を入力してください' : '目標金額を入力してください',
     addEvent: () => {
-      const amt = +s.evAmount || 0, months = s.evWhen ? monthsUntilMonth(s.evWhen) : Math.max(1, +s.evMonths || 1);
+      const amt = +s.evAmount || 0;
+      const start = s.evStart || currentRealMonth;
+      const months = s.evWhen ? monthsBetweenMonths(start, s.evWhen) : 12;
       if (!s.evName.trim() || amt <= 0) return;
-      const ne = { name: s.evName.trim(), when: monthValueToWhen(s.evWhen), currency: s.evCurrency, target: amt, saved: 0, monthly: Math.round(amt / months) };
-      setState((st) => ({ events: st.events.concat([ne]), addEventOpen: false, evName: '', evWhen: '' }));
+      const ne = { name: s.evName.trim(), when: monthValueToWhen(s.evWhen), startMonth: start, currency: s.evCurrency, target: amt, saved: 0, monthly: Math.round(amt / months) };
+      setState((st) => ({ events: st.events.concat([ne]), addEventOpen: false, evName: '', evWhen: '', evStart: '' }));
     },
     goHome: go('home'), goSalary: go('salary'), goExpense: go('expense'), goInvest: go('invest'),
     goBudget: () => setState({ screen: 'budget', budgetTab: 'budget', menuOpen: false }),

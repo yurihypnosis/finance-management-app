@@ -142,17 +142,20 @@ export function Budget({ v }: { v: Computed }) {
               <input className="field-input" type="number" min={1} value={editEvent.targetRaw} onChange={editEvent.onTarget} />
             </div>
             <div>
-              <span className="field-label">月々の積立額（{SYM[editEvent.currency] || '円'}）</span>
-              <input className="field-input" type="number" min={0} value={editEvent.monthlyRaw} onChange={editEvent.onMonthly} />
-            </div>
-            <div>
               <span className="field-label">名前</span>
               <input className="field-input" value={editEvent.name} onChange={editEvent.onName} />
             </div>
-            <div>
-              <span className="field-label">時期{editEvent.whenMonthValue ? '' : '（未設定: ' + editEvent.when + '）'}</span>
-              <input className="field-input" type="month" value={editEvent.whenMonthValue} onChange={editEvent.onWhen} />
+            <div className="bud-form-row">
+              <div className="bud-form-col-2">
+                <span className="field-label">積立開始月</span>
+                <input className="field-input" type="month" value={editEvent.startMonthValue} onChange={editEvent.onStartMonth} />
+              </div>
+              <div className="bud-form-col-2">
+                <span className="field-label">時期{editEvent.whenMonthValue ? '' : '（未設定: ' + editEvent.when + '）'}</span>
+                <input className="field-input" type="month" value={editEvent.whenMonthValue} onChange={editEvent.onWhen} />
+              </div>
             </div>
+            <div className="row-note">月々の積立額（自動按分）: {editEvent.monthlyFmt}・{editEvent.prorationNote}</div>
             {editEvent.fxNote && <div className="row-note">{editEvent.fxNote}</div>}
             <div className="bud-sheet-actions">
               <div className="btn-primary" onClick={() => setEditEventIdx(null)}>完了</div>
@@ -177,9 +180,15 @@ export function Budget({ v }: { v: Computed }) {
       <Sheet open={v.addEventOpen} onClose={v.closeAddEvent} title="イベントを追加">
         <div className="bud-form">
           <input className="field-input" value={v.evName} placeholder="例: ハワイ旅行" autoFocus onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvName} />
-          <div>
-            <span className="field-label">時期（いつまでに）</span>
-            <input className="field-input" type="month" value={v.evWhen} min={v.evWhenMin} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvWhen} />
+          <div className="bud-form-row">
+            <div className="bud-form-col-2">
+              <span className="field-label">積立開始月</span>
+              <input className="field-input" type="month" value={v.evStart} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvStart} />
+            </div>
+            <div className="bud-form-col-2">
+              <span className="field-label">時期（いつまでに）</span>
+              <input className="field-input" type="month" value={v.evWhen} min={v.evWhenMin} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvWhen} />
+            </div>
           </div>
           <div className="bud-form-row">
             <div className="bud-form-col-2">

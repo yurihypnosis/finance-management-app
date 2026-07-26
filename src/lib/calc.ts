@@ -24,6 +24,11 @@ export function whenToMonthValue(when: string): string {
 export function monthValueToWhen(v: string): string {
   return v ? monthLabel(v) : '時期未定';
 }
+/** 開始月から対象月まで("YYYY-MM"同士)の積立回数。逆転や同月は最低1。 */
+export function monthsBetweenMonths(startV: string, endV: string): number {
+  const a = startV.split('-'), b = endV.split('-');
+  return Math.max(1, (+b[0] - +a[0]) * 12 + (+b[1] - +a[1]));
+}
 /** 今月から対象月("YYYY-MM")までの残り月数。過去や当月は最低1。 */
 export function monthsUntilMonth(v: string, from: Date = new Date()): number {
   const parts = v.split('-');

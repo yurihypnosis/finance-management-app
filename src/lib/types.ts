@@ -1,8 +1,10 @@
 export interface Bonus { id: string; label: string; month: number; amount: number }
 export interface BudgetCategory { id: string; name: string; cap: number; group: 'fixed' | 'variable' }
 export interface Habit { id: string; name: string; freq: string; month: number }
-export interface Sub { id: string; name: string; price: number; usage: 'high' | 'mid' | 'low' | 'none'; cycle: 'monthly' | 'annual' }
-export interface LifeEvent { name: string; when: string; currency: string; target: number; saved: number; monthly: number }
+/** cancelledMonth: 解約月 "YYYY-MM"。未設定なら契約中。当月なら今月分までシミュレーションに反映、前月以前なら反映しない。 */
+export interface Sub { id: string; name: string; price: number; usage: 'high' | 'mid' | 'low' | 'none'; cycle: 'monthly' | 'annual'; cancelledMonth?: string }
+/** startMonth: 積立開始月 "YYYY-MM"。未設定は今月扱い。monthly は開始月〜時期の月数で target を按分した値。 */
+export interface LifeEvent { name: string; when: string; currency: string; target: number; saved: number; monthly: number; startMonth?: string }
 export interface Transfer { id: string; name: string; note: string; amount: number; taxAdvantaged?: boolean }
 export interface CashExpense { id: string; name: string; note: string; amount: number; date: string; recurringId?: string }
 export interface CashRecurring { id: string; name: string; amount: number; note: string }
@@ -38,9 +40,12 @@ export interface AppState {
   formAmount: number;
   habits: Habit[];
   subs: Sub[];
+  /** ユーザーが削除したサブスクのid。カード明細からの再構築時に復活させないための控え。 */
+  deletedSubIds: string[];
   addEventOpen: boolean;
   evName: string;
   evWhen: string;
+  evStart: string;
   evAmount: number;
   evCurrency: string;
   evMonths: number;
@@ -106,7 +111,8 @@ export function defaultState(monthKeyFn: (d: Date) => string, isoDateFn: (d: Dat
       { id: 'sub5', name: 'ジム会員', price: 8000, usage: 'low', cycle: 'monthly' },
       { id: 'sub6', name: '雑誌読み放題', price: 500, usage: 'none', cycle: 'monthly' },
     ],
-    addEventOpen: false, evName: '', evWhen: '', evAmount: 2000, evCurrency: 'USD', evMonths: 12,
+    deletedSubIds: [],
+    addEventOpen: false, evName: '', evWhen: '', evStart: '', evAmount: 2000, evCurrency: 'USD', evMonths: 12,
     events: [
       { name: '旅行A', when: '2026年10月', currency: 'JPY', target: 150000, saved: 60000, monthly: 15000 },
       { name: '旅行B', when: '2027年6月', currency: 'USD', target: 1500, saved: 300, monthly: 100 },

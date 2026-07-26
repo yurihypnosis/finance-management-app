@@ -36,12 +36,14 @@ function HabitReadRow({ row, onOpen }: { row: HabitRow; onOpen: () => void }) {
 /** サブスクの閲覧行: 名前+月額換算+活用度バッジ（低活用は「解約候補」も併記）。タップで編集シートを開く。 */
 function SubReadRow({ row, onOpen }: { row: SubRow; onOpen: () => void }) {
   return (
-    <button type="button" className="sub-row" onClick={onOpen}>
+    <button type="button" className="sub-row" style={row.cancelled ? { opacity: 0.55 } : undefined} onClick={onOpen}>
       <div className="sub-row-main">
         <div className="sub-row-text">
           <div className="sub-row-name">{row.name}</div>
           <div className="sub-row-badges">
-            <Badge label={row.usageLabel} tone={row.usageTone} />
+            {row.cancelled
+              ? <Badge label={row.cancelledPast ? '解約済み' : '今月で解約'} tone="neutral" />
+              : <Badge label={row.usageLabel} tone={row.usageTone} />}
             {row.cancelCandidate && <Badge label="解約候補" tone="danger" />}
           </div>
         </div>
@@ -58,8 +60,8 @@ export function Habit({ v }: { v: Computed }) {
   const editHabit = v.habitRows.find((hb) => hb.id === editHabitId);
   const editSub = v.subRows.find((sub) => sub.id === editSubId);
 
-  // 低活用（解約候補）ほど上に出す。表示順のみの並べ替えで計算ロジックは変えない。
-  const sortedSubRows = [...v.subRows].sort((a, b) => a.usageRank - b.usageRank);
+  // 低活用（解約候補）ほど上、解約済みは最下段。表示順のみの並べ替えで計算ロジックは変えない。
+  const sortedSubRows = [...v.subRows].sort((a, b) => (a.cancelled ? 1 : 0) - (b.cancelled ? 1 : 0) || a.usageRank - b.usageRank);
 
   const habitBody = (
     <div>
@@ -174,9 +176,20 @@ export function Habit({ v }: { v: Computed }) {
                 <button type="button" className={`hab-choice-btn${editSub.noneOn ? ' hab-choice-btn-active' : ''}`} onClick={editSub.setNone}>未使用</button>
               </div>
             </div>
-            <div className="hab-advice" style={{ color: editSub.adviceColor }}>{editSub.advice}</div>
+            <div>
+              <span className="field-label">契約状態</span>
+              <div className="hab-choice-grid">
+                <button type="button" className={`hab-choice-btn${editSub.activeOn ? ' hab-choice-btn-active' : ''}`} onClick={editSub.setActive}>契約中</button>
+                <button type="button" className={`hab-choice-btn${editSub.cancelledThisMonthOn ? ' hab-choice-btn-active' : ''}`} onClick={editSub.cancelThisMonth}>今月で解約</button>
+                <button type="button" className={`hab-choice-btn${editSub.cancelledPastOn ? ' hab-choice-btn-active' : ''}`} onClick={editSub.cancelPast}>先月以前に解約済み</button>
+              </div>
+            </div>
+            {editSub.cancelledNote
+              ? <div className="row-note">{editSub.cancelledNote}</div>
+              : <div className="hab-advice" style={{ color: editSub.adviceColor }}>{editSub.advice}</div>}
             <div className="hab-sheet-actions">
               <div className="btn-primary" onClick={() => setEditSubId(null)}>完了</div>
+              {editSub.cancelled && <ConfirmDelete onConfirm={() => { editSub.remove(); setEditSubId(null); }} />}
             </div>
           </div>
         )}

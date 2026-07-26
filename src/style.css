@@ -215,6 +215,11 @@ a { color: var(--primary2); text-decoration: none; }
   background: rgba(15,17,23,.92);
   backdrop-filter: blur(18px);
   padding-bottom: env(safe-area-inset-bottom, 0);
+  /* ページ全体がスクロールする構成（#phone は min-height）でも、モバイルで
+     常に画面下部に留まるように sticky で固定する。z-index はドロワー(20)より下。 */
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
 }
 .bottom-nav-item {
   flex: 1;
