@@ -140,11 +140,11 @@ export function Habit({ v }: { v: Computed }) {
           <div className="hab-form-row">
             <div>
               <span className="field-label">週に何回</span>
-              <input className="field-input" type="number" value={v.formTimes} min={1} max={21} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormTimes} />
+              <NumberField className="field-input" value={v.formTimes} min={1} max={21} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormTimes} />
             </div>
             <div>
               <span className="field-label">1回あたり（円）</span>
-              <input className="field-input" type="number" value={v.formAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormAmount} />
+              <NumberField className="field-input" value={v.formAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addHabit)} onChange={v.onFormAmount} />
             </div>
           </div>
           <div className="row-note">月換算 {v.formMonthFmt}円 / 年換算 {v.formYearFmt}円</div>

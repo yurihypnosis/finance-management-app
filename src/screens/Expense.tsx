@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Computed } from '../hooks/useComputed';
-import { ConfirmDelete, FormActions, MonthSwitcher, SegTabs, submitOnEnter } from '../components/common';
+import { ConfirmDelete, FormActions, MonthSwitcher, NumberField, SegTabs, submitOnEnter } from '../components/common';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { MeterBar } from '../components/charts';
 import { AddAction, Badge, ColorChip, InfoTip } from '../components/parts';
@@ -274,7 +274,7 @@ export function Expense({ v }: { v: Computed }) {
             </div>
             <div>
               <span className="field-label">金額（円）</span>
-              <input className="field-input" type="number" min={0} step={100} value={editCash.amount} onChange={editCash.onAmount} />
+              <NumberField className="field-input" min={0} step={100} value={editCash.amount} onChange={editCash.onAmount} />
             </div>
             <div>
               <span className="field-label">日付</span>
@@ -301,7 +301,7 @@ export function Expense({ v }: { v: Computed }) {
             </div>
             <div>
               <span className="field-label">金額（円）</span>
-              <input className="field-input" type="number" min={0} step={1000} value={editTransfer.amount} onChange={editTransfer.onAmount} />
+              <NumberField className="field-input" min={0} step={1000} value={editTransfer.amount} onChange={editTransfer.onAmount} />
             </div>
             <div>
               <span className="field-label">メモ</span>
@@ -323,7 +323,7 @@ export function Expense({ v }: { v: Computed }) {
           <div className="exp-form-row">
             <div className="exp-form-col-2">
               <span className="field-label">金額（円）</span>
-              <input className="field-input" type="number" value={v.formCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addCash)} onChange={v.onFormCashAmount} />
+              <NumberField className="field-input" value={v.formCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addCash)} onChange={v.onFormCashAmount} />
             </div>
             <div className="exp-form-col-1">
               <span className="field-label">日付</span>
@@ -340,7 +340,7 @@ export function Expense({ v }: { v: Computed }) {
           <input className="field-input" value={v.formTransferName} placeholder="例: 証券口座への入金" autoFocus onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferName} />
           <div>
             <span className="field-label">金額（円）</span>
-            <input className="field-input" type="number" value={v.formTransferAmount} min={0} step={1000} onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferAmount} />
+            <NumberField className="field-input" value={v.formTransferAmount} min={0} step={1000} onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferAmount} />
           </div>
           <input className="field-input" value={v.formTransferNote} placeholder="メモ（任意）" onKeyDown={submitOnEnter(v.addTransfer)} onChange={v.onFormTransferNote} />
           <NisaCheck on={v.formTransferIsNisa} onToggle={v.toggleFormTransferIsNisa} />
@@ -353,7 +353,7 @@ export function Expense({ v }: { v: Computed }) {
           <input className="field-input" value={v.formRecurringCashName} placeholder="例: 週末の駐輪場代" autoFocus onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashName} />
           <div>
             <span className="field-label">金額（円）</span>
-            <input className="field-input" type="number" value={v.formRecurringCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashAmount} />
+            <NumberField className="field-input" value={v.formRecurringCashAmount} min={0} step={100} onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashAmount} />
           </div>
           <input className="field-input" value={v.formRecurringCashNote} placeholder="メモ（任意）" onKeyDown={submitOnEnter(v.addRecurringCash)} onChange={v.onFormRecurringCashNote} />
           <FormActions valid={v.formRecurringCashValid} errorMessage={v.formRecurringCashError} onSubmit={v.addRecurringCash} onCancel={v.closeAddRecurringCash} />

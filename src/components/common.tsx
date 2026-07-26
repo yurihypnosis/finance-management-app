@@ -85,7 +85,7 @@ export function ConfirmDelete({ onConfirm, label = '削除', style }: { onConfir
  * editable number while focused, so amounts are readable ("10,000円")
  * without fighting the browser over caret position during typing.
  */
-export function NumberField({ value, onChange, className, style, min, max, step, placeholder, dataField }: {
+export function NumberField({ value, onChange, className, style, min, max, step, placeholder, dataField, onKeyDown, autoFocus }: {
   value: number;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   className?: string;
@@ -95,6 +95,8 @@ export function NumberField({ value, onChange, className, style, min, max, step,
   step?: number;
   placeholder?: string;
   dataField?: string;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
+  autoFocus?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const [local, setLocal] = useState(String(value));
@@ -112,6 +114,8 @@ export function NumberField({ value, onChange, className, style, min, max, step,
       step={step}
       placeholder={placeholder}
       data-field={dataField}
+      autoFocus={autoFocus}
+      onKeyDown={onKeyDown}
       value={focused ? local : fmt(value || 0)}
       onFocus={(e) => { setFocused(true); setLocal(String(value)); e.target.select(); }}
       onBlur={() => setFocused(false)}

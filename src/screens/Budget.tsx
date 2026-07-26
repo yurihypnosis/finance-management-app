@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Computed } from '../hooks/useComputed';
-import { ConfirmDelete, FormActions, MonthSwitcher, SegTabs, submitOnEnter } from '../components/common';
+import { ConfirmDelete, FormActions, MonthSwitcher, NumberField, SegTabs, submitOnEnter } from '../components/common';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { MeterBar, meterColor } from '../components/charts';
 import { AddAction, Badge, ColorChip } from '../components/parts';
@@ -112,7 +112,7 @@ export function Budget({ v }: { v: Computed }) {
           <div className="bud-form">
             <div>
               <span className="field-label">今月の実績（円）</span>
-              <input className="field-input" type="number" min={0} step={100} autoFocus value={editCat.used} onChange={editCat.onUsedChange} />
+              <NumberField className="field-input" min={0} step={100} autoFocus value={editCat.used} onChange={editCat.onUsedChange} />
             </div>
             <div>
               <span className="field-label">カテゴリ名</span>
@@ -120,7 +120,7 @@ export function Budget({ v }: { v: Computed }) {
             </div>
             <div>
               <span className="field-label">予算（円/月）</span>
-              <input className="field-input" type="number" min={1} step={1000} value={editCat.cap} onChange={editCat.onCapChange} />
+              <NumberField className="field-input" min={1} step={1000} value={editCat.cap} onChange={editCat.onCapChange} />
             </div>
             <div className="bud-sheet-actions">
               <div className="btn-primary" onClick={() => setEditCatId(null)}>完了</div>
@@ -135,11 +135,11 @@ export function Budget({ v }: { v: Computed }) {
           <div className="bud-form">
             <div>
               <span className="field-label">積立済（{SYM[editEvent.currency] || '円'}）</span>
-              <input className="field-input" type="number" min={0} autoFocus value={editEvent.savedRaw} onChange={editEvent.onSaved} />
+              <NumberField className="field-input" min={0} autoFocus value={editEvent.savedRaw} onChange={editEvent.onSaved} />
             </div>
             <div>
               <span className="field-label">目標（{SYM[editEvent.currency] || '円'}）</span>
-              <input className="field-input" type="number" min={1} value={editEvent.targetRaw} onChange={editEvent.onTarget} />
+              <NumberField className="field-input" min={1} value={editEvent.targetRaw} onChange={editEvent.onTarget} />
             </div>
             <div>
               <span className="field-label">名前</span>
@@ -171,7 +171,7 @@ export function Budget({ v }: { v: Computed }) {
           <input className="field-input" value={v.formCategoryName} placeholder="例: 交際費" autoFocus onKeyDown={submitOnEnter(v.addCategory)} onChange={v.onFormCategoryName} />
           <div>
             <span className="field-label">目標金額（円/月）</span>
-            <input className="field-input" type="number" value={v.formCategoryCap} min={0} step={1000} onKeyDown={submitOnEnter(v.addCategory)} onChange={v.onFormCategoryCap} />
+            <NumberField className="field-input" value={v.formCategoryCap} min={0} step={1000} onKeyDown={submitOnEnter(v.addCategory)} onChange={v.onFormCategoryCap} />
           </div>
           <FormActions valid={v.formCategoryValid} errorMessage={v.formCategoryError} onSubmit={v.addCategory} onCancel={v.closeAddCategory} />
         </div>
@@ -193,7 +193,7 @@ export function Budget({ v }: { v: Computed }) {
           <div className="bud-form-row">
             <div className="bud-form-col-2">
               <span className="field-label">目標金額</span>
-              <input className="field-input" type="number" value={v.evAmount} min={0} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvAmount} />
+              <NumberField className="field-input" value={v.evAmount} min={0} onKeyDown={submitOnEnter(v.addEvent)} onChange={v.onEvAmount} />
             </div>
             <div className="bud-form-col-1">
               <span className="field-label">通貨</span>
