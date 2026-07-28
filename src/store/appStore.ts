@@ -36,6 +36,35 @@ const PERSISTED_KEYS: ReadonlySet<keyof AppState> = new Set<keyof AppState>([
   'habits', 'subs', 'deletedSubIds', 'events', 'cashExpensesByMonth', 'cashRecurring',
 ]);
 
+/** 保存対象キーだけを抜き出す。UI状態（screen・viewMonth・開いているシート・入力途中の
+    フォーム値）まで保存/復元すると、翌月に先月表示のまま開いたり、前回の入力値が
+    次のフォームに残ったりするため、データだけを永続化する。 */
+function pickPersisted(src: Partial<AppState> | null | undefined): Partial<AppState> {
+  const out: Partial<AppState> = {};
+  if (!src) return out;
+  PERSISTED_KEYS.forEach((k) => {
+    if (src[k] !== undefined) (out as Record<string, unknown>)[k] = src[k];
+  });
+  return out;
+}
+
+/** localStorage キャッシュ。新形式は { savedAt, data }、旧形式は AppState 丸ごと。 */
+function parseCache(raw: string | null): { savedAt: string | null; data: Partial<AppState> } | null {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw);
+    if (p && typeof p === 'object' && p.data && typeof p.savedAt === 'string') return { savedAt: p.savedAt, data: p.data };
+    if (p && typeof p === 'object') return { savedAt: null, data: p };
+  } catch { /* 壊れたキャッシュは無視 */ }
+  return null;
+}
+
+function isNewer(a: string | null, b: string | null): boolean {
+  if (!a) return false;
+  if (!b) return true;
+  return new Date(a).getTime() > new Date(b).getTime();
+}
+
 export const useAppStore = create<Store>((set, get) => {
   function setSyncStatus(v: SyncStatus) {
     set({ syncStatus: v });
@@ -43,15 +72,37 @@ export const useAppStore = create<Store>((set, get) => {
     if (v === 'saved') syncStatusResetTimer = setTimeout(() => setSyncStatus('idle'), 2000);
   }
 
+  // 送信の直列化: 先行リクエストの完了前に新しい編集が来たら dirty を立て、完了後に
+  // 最新状態で送り直す。並行 upsert が逆順で着弾して古い状態が DB に残るのを防ぐ。
+  let syncInFlight = false;
+  let syncDirty = false;
+  let syncRetries = 0;
+
   function flushSync() {
     if (pendingSyncTimer) { clearTimeout(pendingSyncTimer); pendingSyncTimer = null; }
     const { session, state } = get();
     if (!session || !state) return;
-    sb.from('user_state').upsert({ user_id: session.user.id, data: state, updated_at: new Date().toISOString() })
+    if (syncInFlight) { syncDirty = true; return; }
+    syncInFlight = true;
+    const fail = (err: unknown) => {
+      syncInFlight = false;
+      console.error('状態の保存に失敗しました', err);
+      if (syncRetries < 3) {
+        syncRetries += 1;
+        setSyncStatus('pending');
+        pendingSyncTimer = setTimeout(flushSync, 3000 * syncRetries);
+      } else {
+        setSyncStatus('error');
+      }
+    };
+    sb.from('user_state').upsert({ user_id: session.user.id, data: pickPersisted(state), updated_at: new Date().toISOString() })
       .then((res) => {
-        if (res.error) { console.error('状態の保存に失敗しました', res.error); setSyncStatus('error'); return; }
+        if (res.error) { fail(res.error); return; }
+        syncInFlight = false;
+        syncRetries = 0;
+        if (syncDirty) { syncDirty = false; flushSync(); return; }
         setSyncStatus('saved');
-      });
+      }, fail);
   }
 
   function scheduleSync() {
@@ -142,30 +193,44 @@ export const useAppStore = create<Store>((set, get) => {
     syncStatus: 'idle',
 
     async bootstrap() {
-      const res = await sb.auth.getSession();
-      if (res.data.session) {
-        await get().enterApp(res.data.session);
-      } else {
+      try {
+        const res = await sb.auth.getSession();
+        if (res.data.session) {
+          await get().enterApp(res.data.session);
+        } else {
+          set({ authReady: true });
+        }
+      } catch (e) {
+        // セッション取得に失敗してもローディング画面で固まらせない
+        console.error('セッションの取得に失敗しました', e);
         set({ authReady: true });
       }
     },
 
     async enterApp(session: Session) {
       set({ session });
-      let cached: AppState | null = null;
-      try { cached = JSON.parse(localStorage.getItem(userStorageKey(session.user.id)) || 'null'); } catch { /* no local cache */ }
+      const cached = parseCache(localStorage.getItem(userStorageKey(session.user.id)));
       try {
-        const res = await sb.from('user_state').select('data').eq('user_id', session.user.id).maybeSingle();
+        const res = await sb.from('user_state').select('data, updated_at').eq('user_id', session.user.id).maybeSingle();
         if (res.error) throw res.error;
-        const merged = Object.assign(defaultState(monthKey, isoDate), cached || {}, (res.data && (res.data as any).data) || {});
+        const remote = res.data as { data?: Partial<AppState>; updated_at?: string } | null;
+        // 新しい方を勝たせる: 保存失敗やタブを閉じた直後などでローカルキャッシュの方が
+        // 新しいことがあり、常にリモート優先だとその編集が古いデータで巻き戻される。
+        // 旧形式キャッシュ（時刻なし）は従来どおりリモート優先。
+        const cacheNewer = !!cached && isNewer(cached.savedAt, remote?.updated_at || null);
+        const layers = cacheNewer
+          ? [pickPersisted(remote?.data), pickPersisted(cached?.data)]
+          : [pickPersisted(cached?.data), pickPersisted(remote?.data)];
+        const merged = Object.assign(defaultState(monthKey, isoDate), ...layers);
         set({ state: merged, authReady: true });
+        if (cacheNewer) scheduleSync();
         loadCardTransactions();
       } catch (e) {
         // A failed read must never fall back to blank defaults here: the next
         // mutation would sync that empty state to Supabase and overwrite the
         // user's real saved data. Fall back to the last-known local cache instead.
         console.error('ユーザーデータの読み込みに失敗しました', e);
-        const merged = Object.assign(defaultState(monthKey, isoDate), cached || {});
+        const merged = Object.assign(defaultState(monthKey, isoDate), pickPersisted(cached?.data));
         set({ state: merged, authReady: true });
         loadCardTransactions();
       }
@@ -183,7 +248,6 @@ export const useAppStore = create<Store>((set, get) => {
       const merged = { ...state, ...next };
       set({ state: merged });
       if (session) {
-        try { localStorage.setItem(userStorageKey(session.user.id), JSON.stringify(merged)); } catch { /* storage full/unavailable */ }
         // Sync only when a persisted key actually changed in value — not on
         // navigation/tab/form-typing patches, and not when a data key was
         // rewritten with identical content (e.g. the card-transaction merge
@@ -192,7 +256,13 @@ export const useAppStore = create<Store>((set, get) => {
           PERSISTED_KEYS.has(k as keyof AppState) &&
           JSON.stringify(state[k as keyof AppState]) !== JSON.stringify(next[k as keyof AppState]),
         );
-        if (dataChanged) scheduleSync();
+        if (dataChanged) {
+          // データキーのみ・保存時刻つきでキャッシュ（リロード時の新旧比較に使う）
+          try {
+            localStorage.setItem(userStorageKey(session.user.id), JSON.stringify({ savedAt: new Date().toISOString(), data: pickPersisted(merged) }));
+          } catch { /* storage full/unavailable */ }
+          scheduleSync();
+        }
       }
     },
   };

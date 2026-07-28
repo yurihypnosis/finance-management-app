@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { fmt } from '../lib/calc';
 
-/** Lets a text field submit its enclosing add-form on Enter, like a normal form would. */
+/** Lets a text field submit its enclosing add-form on Enter, like a normal form would.
+    IME の変換確定 Enter（isComposing / Safari の keyCode 229）では送信しない。 */
 export function submitOnEnter(fn: () => void) {
-  return (e: KeyboardEvent) => { if (e.key === 'Enter') fn(); };
+  return (e: KeyboardEvent) => {
+    const ne = e.nativeEvent as unknown as { isComposing?: boolean; keyCode?: number };
+    if (e.key === 'Enter' && !ne.isComposing && ne.keyCode !== 229) fn();
+  };
 }
 
 export function ListRow({ children }: { children: ReactNode }) {

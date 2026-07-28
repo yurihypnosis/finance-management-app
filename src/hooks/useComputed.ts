@@ -46,7 +46,9 @@ export function useComputed() {
   const bonusAnnualNet = bonusRows.reduce((a, b) => a + b.net, 0);
   const monthBonusNet = bonusRows.filter((b) => b.isThisMonth).reduce((a, b) => a + b.net, 0);
   const goCurrentMonth = () => setState({ viewMonth: currentRealMonth });
-  const canGoNext = vm !== currentRealMonth;
+  // 「<」比較にしておく: 万一 viewMonth が未来月に飛んでも(過去データの請求月タップ等)
+  // さらに未来へ進めず、「今月へ」で戻れるようにする。
+  const canGoNext = vm < currentRealMonth;
 
   const monthActuals = s.budgetActuals[vm] || {};
   const rawSpend = Object.keys(monthActuals).reduce((a, k) => a + (monthActuals[k] || 0), 0);
@@ -126,7 +128,24 @@ export function useComputed() {
     onName: (e: React.ChangeEvent<HTMLInputElement>) => setCashField(c.id, { name: e.target.value }),
     onAmount: (e: React.ChangeEvent<HTMLInputElement>) => setCashField(c.id, { amount: Math.max(0, +e.target.value || 0) }),
     onNote: (e: React.ChangeEvent<HTMLInputElement>) => setCashField(c.id, { note: e.target.value }),
-    onDate: (e: React.ChangeEvent<HTMLInputElement>) => setCashField(c.id, { date: e.target.value }),
+    onDate: (e: React.ChangeEvent<HTMLInputElement>) => {
+      const nd = e.target.value;
+      if (!nd) return;
+      const nmk = nd.slice(0, 7);
+      // 月をまたぐ日付変更はエントリごと移動させ、集計が古い月に残らないようにする
+      setState((st) => {
+        const cbm = { ...st.cashExpensesByMonth };
+        const cur = (cbm[vm] || []).find((x) => x.id === c.id);
+        if (!cur) return {};
+        if (nmk === vm) {
+          cbm[vm] = (cbm[vm] || []).map((x) => (x.id === c.id ? { ...x, date: nd } : x));
+        } else {
+          cbm[vm] = (cbm[vm] || []).filter((x) => x.id !== c.id);
+          cbm[nmk] = (cbm[nmk] || []).concat([{ ...cur, date: nd }]);
+        }
+        return { cashExpensesByMonth: cbm };
+      });
+    },
     remove: () => {
       setState((st) => {
         const cbm = { ...st.cashExpensesByMonth };
@@ -135,30 +154,33 @@ export function useComputed() {
       });
     },
   }));
-  /* ---- recurring cash-expense patterns (必ず発生する現金支出をまとめて登録) ---- */
+  /* ---- recurring cash-expense patterns (必ず発生する現金支出をまとめて登録) ----
+     「今月に登録」は文字どおり実際の今月へ入れる。以前は表示中の月(vm)に入れていたため、
+     過去月を見ながら押すと今日付の支出が過去月の集計に混ざっていた。 */
   function addRecurringToMonth(r: AppState['cashRecurring'][number]) {
     setState((st) => {
       const cbm = { ...st.cashExpensesByMonth };
-      const list = cbm[vm] || [];
+      const list = cbm[currentRealMonth] || [];
       if (list.some((c) => c.recurringId === r.id)) return {};
       const nc = {
         id: 'cash-r-' + r.id + '-' + Math.random().toString(36).slice(2, 7),
         name: r.name, note: r.note || '固定支出パターンから登録', amount: r.amount,
         date: isoDate(new Date()), recurringId: r.id,
       };
-      cbm[vm] = list.concat([nc]);
+      cbm[currentRealMonth] = list.concat([nc]);
       return { cashExpensesByMonth: cbm };
     });
   }
   const cashRecurringRows = s.cashRecurring.map((r) => {
-    const addedThisMonth = monthCash.some((c) => c.recurringId === r.id);
+    // 登録済み判定も実際の今月バケットで見る（表示中の月ではなく）
+    const addedThisMonth = (s.cashExpensesByMonth[currentRealMonth] || []).some((c) => c.recurringId === r.id);
     return {
       id: r.id, name: r.name, note: r.note, amountFmt: fmt(r.amount), addedThisMonth,
       addOne: () => addRecurringToMonth(r),
       remove: () => setState((st) => ({ cashRecurring: st.cashRecurring.filter((x) => x.id !== r.id) })),
     };
   });
-  const pendingRecurring = s.cashRecurring.filter((r) => !monthCash.some((c) => c.recurringId === r.id));
+  const pendingRecurring = s.cashRecurring.filter((r) => !(s.cashExpensesByMonth[currentRealMonth] || []).some((c) => c.recurringId === r.id));
 
   const habitDefs = s.habits;
   const habitSave = habitDefs.reduce((a, hb) => a + (s.habitsOff[hb.id] ? hb.month : 0), 0);
@@ -298,10 +320,21 @@ export function useComputed() {
       barColor: ratio >= 1 ? 'var(--color-positive)' : 'var(--color-accent)',
     };
   });
-  const eventMonthlyTotal = s.events.reduce((a, ev) => a + ev.monthly * (RATES[ev.currency] || 1), 0);
+  /* 積立中のイベントだけを月々の積立合計に入れる:
+     開始月が未来のものはまだ積み立てていないし、時期を過ぎたものは積立が終わっている。 */
+  const savingEvents = s.events.filter((ev) => {
+    if ((ev.startMonth || currentRealMonth) > currentRealMonth) return false;
+    const whenV = whenToMonthValue(ev.when);
+    return !whenV || whenV >= currentRealMonth;
+  });
+  const eventMonthlyTotal = savingEvents.reduce((a, ev) => a + ev.monthly * (RATES[ev.currency] || 1), 0);
 
   /* ---- annual expense simulation ---- */
-  const subsAnnualTotal = simSubs.reduce((a, x) => a + subAnnual(x), 0);
+  // 契約中は年額まるごと、今月解約分は残り1回分の支払いのみ計上する
+  // （以前は今月解約でも12ヶ月分乗っていて年間予測を過大評価していた）。
+  const subsAnnualTotal =
+    activeSubs.reduce((a, x) => a + subAnnual(x), 0) +
+    simSubs.filter((x) => x.cancelledMonth).reduce((a, x) => a + subMonthly(x), 0);
   const subsMonthly = subsAnnualTotal / 12;
   const habitsOnMonthly = habitDefs.reduce((a, hb) => a + (s.habitsOff[hb.id] ? 0 : hb.month), 0);
   const recordedMonths = Object.keys(s.budgetActuals);
@@ -379,7 +412,7 @@ export function useComputed() {
     { key: 'habits', name: '習慣（ONのみ）', monthly: habitsOnMonthly, annual: annualHabits, note: habitDefs.filter((hb) => !s.habitsOff[hb.id]).length + '/' + habitDefs.length + '件が対象' },
     { key: 'variable', name: '流動費（買い物・ETC・食費等）', monthly: Math.round(variableBudgetMonthly), annual: annualVariable, note: variableBasedOnActuals ? '記録済み月の平均から算出' : 'まだ記録がないため予算目標から算出' },
     { key: 'cash', name: '現金支出', monthly: Math.round(cashAvgMonthly), annual: annualCash, note: recordedCashMonths.length > 0 ? recordedCashMonths.length + 'ヶ月分の記録から平均' : 'まだ記録がありません' },
-    { key: 'events', name: 'ライフイベント積立', monthly: Math.round(eventMonthlyTotal), annual: annualEvents, note: s.events.length + '件の目標に向けた積立' },
+    { key: 'events', name: 'ライフイベント積立', monthly: Math.round(eventMonthlyTotal), annual: annualEvents, note: savingEvents.length + '件の目標に向けて積立中' },
   ];
   const annualTotal = annualFixed + annualSubs + annualHabits + annualVariable + annualCash + annualEvents;
   const annualNet = t.net * 12 + bonusAnnualNet;
@@ -423,7 +456,9 @@ export function useComputed() {
     const catTotal = Object.keys(ba).reduce((a, k) => a + (ba[k] || 0), 0);
     const cashList = s.cashExpensesByMonth[mk] || [];
     const cashT = cashList.reduce((a, c) => a + c.amount, 0);
-    return catTotal + cashT;
+    // 投資・貯蓄への振替は支出ではないので除外（支出画面の realSpend と同じ扱い）
+    const trT = (s.transfersByMonth[mk] || []).reduce((a, t) => a + t.amount, 0);
+    return Math.max(0, catTotal - trT + cashT);
   }
   const allRecordedMonths = Array.from(new Set(recordedMonths.concat(recordedCashMonths))).sort();
   const monthlyTotals = allRecordedMonths.map((mk) => ({ mk, total: monthTotalSpend(mk) }));
@@ -774,14 +809,17 @@ export function useComputed() {
     addCash: () => {
       const amt = +s.formCashAmount || 0;
       if (!s.formCashName.trim() || amt <= 0) return;
+      const date = s.formCashDate || isoDate(new Date());
       const nc = {
         id: 'cash-' + monthCash.length + '-' + Math.random().toString(36).slice(2, 7),
         name: s.formCashName.trim(), note: s.formCashNote.trim() || '現金払い・カード明細に含まれない', amount: amt,
-        date: s.formCashDate || isoDate(new Date()),
+        date,
       };
       setState((st) => {
         const cbm = { ...st.cashExpensesByMonth };
-        cbm[vm] = (cbm[vm] || []).concat([nc]);
+        // 日付の属する月のバケットに入れる（表示中の月ではなく）。"YYYY-MM-DD" → "YYYY-MM"
+        const mk = date.slice(0, 7);
+        cbm[mk] = (cbm[mk] || []).concat([nc]);
         return { cashExpensesByMonth: cbm, addCashOpen: false, formCashName: '', formCashNote: '' };
       });
     },
@@ -789,7 +827,8 @@ export function useComputed() {
     registerAllRecurring: () => {
       setState((st) => {
         const cbm = { ...st.cashExpensesByMonth };
-        const list = cbm[vm] || [];
+        // 「今月にまとめて登録」も実際の今月バケットへ（表示中の月ではなく）
+        const list = cbm[currentRealMonth] || [];
         const existingIds = list.filter((c) => c.recurringId).map((c) => c.recurringId);
         const today = isoDate(new Date());
         const toAdd = st.cashRecurring
@@ -799,7 +838,7 @@ export function useComputed() {
             name: r.name, note: r.note || '固定支出パターンから登録', amount: r.amount, date: today, recurringId: r.id,
           }));
         if (toAdd.length === 0) return {};
-        cbm[vm] = list.concat(toAdd);
+        cbm[currentRealMonth] = list.concat(toAdd);
         return { cashExpensesByMonth: cbm };
       });
     },

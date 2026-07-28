@@ -237,7 +237,10 @@ a { color: var(--primary2); text-decoration: none; }
 
 /* ---------- drawer menu ---------- */
 .menu-overlay {
-  position: absolute; inset: 0;
+  /* fixed でビューポート基準に。absolute だと #phone(=文書全体の高さ)基準になり、
+     スクロール中に開くと画面外に出る。max-width でアプリのカラム内に収める。 */
+  position: fixed; inset: 0;
+  max-width: 480px; margin: 0 auto;
   background: rgba(8,9,13,.6);
   display: flex; justify-content: flex-start;
   z-index: 20;

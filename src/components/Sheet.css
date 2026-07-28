@@ -1,11 +1,13 @@
 /* ---------- bottom sheet (shared edit sheet, 原則4: 閲覧と編集の分離) ----------
-   Positioned like .menu-overlay (absolute inset:0 inside #phone, which is
-   position:relative) rather than fixed to the viewport, so it stays clipped
-   to the app's max-width:480px column on wide screens instead of spanning
-   the full browser width. */
+   fixed でビューポート基準に置く。以前は #phone 基準の absolute だったが、
+   ページ全体がスクロールする構成では #phone の高さ＝文書全体になるため、
+   長い画面でスクロール中に開くと「文書の最下端」に張り付いて画面外に出ていた。
+   max-width + margin:auto で従来どおりアプリの480pxカラム内に収める。 */
 .sheet-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  max-width: 480px;
+  margin: 0 auto;
   z-index: 30;
   display: flex;
   align-items: flex-end;
